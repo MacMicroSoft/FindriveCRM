@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "findrive-project"
+version = "0.1.0"
+description = ""
+authors = ["Maksym Potapchuk <maksym.potapchuk.hp@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0"
+django = "^6.0"
+python-dotenv = "^1.2.1"
+psycopg2-binary = "^2.9.11"
+pillow = "^12.0.0"
+django-allauth = "^65.13.1"
+django-tailwind = "^4.4.2"
+django-browser-reload = "^1.21.0"
+django-widget-tweaks = "^1.5.0"
+django-filter = "^25.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

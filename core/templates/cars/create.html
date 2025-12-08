@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+{% load tailwind_tags %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow">
+
+    <h1 class="text-2xl font-semibold mb-6">Створити авто</h1>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6" id="carForm">
+        {% csrf_token %}
+
+        <div>
+            <label class="block text-gray-700 mb-1">VIN код</label>
+            {{ form.vin_code }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Тип пального</label>
+            {{ form.fuel_type }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Марка</label>
+            {{ form.mark }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Модель</label>
+            {{ form.model }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Колір</label>
+            {{ form.color }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Рік</label>
+            {{ form.year }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Пробіг</label>
+            {{ form.mileage }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Тип приводу</label>
+            {{ form.drive_type }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Фото</label>
+            {{ form.photo }}
+        </div>
+
+        <div>
+            <label class="block text-gray-700 mb-1">Власник</label>
+
+            <div class="flex gap-2 items-center">
+                <div class="flex-grow">
+                    {{ form.owner }}
+                </div>
+
+                <button id="toggleOwner" type="button"
+                        class="bg-blue-600 text-white w-10 h-10 rounded-lg flex items-center justify-center">
+                    +
+                </button>
+            </div>
+        </div>
+
+        <div id="ownerBlock" class="mt-6 p-4 border rounded-lg bg-gray-50 hidden">
+
+            <h2 class="text-lg font-medium mb-4">Новий власник</h2>
+
+            <div class="space-y-4">
+
+                <div>
+                    <label class="block text-gray-700 mb-1">Ім'я</label>
+                    {{ owner_form.first_name }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 mb-1">Прізвище</label>
+                    {{ owner_form.last_name }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 mb-1">Телефон</label>
+                    {{ owner_form.phone }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 mb-1">Email</label>
+                    {{ owner_form.email }}
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 mb-1">Telegram профіль</label>
+                    {{ owner_form.telegram_link }}
+                </div>
+
+                <div class="flex items-center gap-2">
+                    {{ owner_form.is_active_telegram }}
+                    <label class="text-gray-700">Telegram активний?</label>
+                </div>
+
+                <button type="button" id="saveOwner"
+                        class="w-full bg-green-600 text-white py-2 rounded-lg mt-2">
+                    Створити власника
+                </button>
+            </div>
+
+        </div>
+
+        <button class="w-full bg-blue-600 text-white py-3 rounded-lg">
+            Створити авто
+        </button>
+
+    </form>
+</div>
+
+<script>
+    const toggleBtn = document.getElementById("toggleOwner");
+    const ownerBlock = document.getElementById("ownerBlock");
+
+    toggleBtn.addEventListener("click", () => {
+        ownerBlock.classList.toggle("hidden");
+    });
+
+    document.getElementById("saveOwner").addEventListener("click", () => {
+        const formData = new FormData();
+
+        formData.append("first_name", document.getElementById("id_first_name").value);
+        formData.append("last_name", document.getElementById("id_last_name").value);
+        formData.append("phone", document.getElementById("id_phone").value);
+        formData.append("email", document.getElementById("id_email").value);
+        formData.append("telegram_link", document.getElementById("id_telegram_link").value);
+        formData.append("is_active_telegram", document.getElementById("id_is_active_telegram").checked);
+
+        formData.append("csrfmiddlewaretoken", document.querySelector('[name="csrfmiddlewaretoken"]').value);
+
+        fetch("{% url 'owner_create_ajax' %}", {
+            method: "POST",
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+
+                    const select = document.getElementById("id_owner");
+                    const option = new Option(data.name, data.id);
+                    select.add(option);
+                    select.value = data.id;
+
+                    ownerBlock.classList.add("hidden");
+                } else {
+                    alert("Помилка: " + JSON.stringify(data.errors));
+                }
+            });
+    });
+</script>
+
+{% endblock %}
