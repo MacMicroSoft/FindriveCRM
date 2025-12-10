@@ -51,7 +51,7 @@ input, textarea, select {
 }
 
 
-.login-box{
+.auth-box{
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -61,7 +61,7 @@ input, textarea, select {
     border-radius: 20px;
 }
 
-.login-container  p{
+.auth-container  p{
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -76,7 +76,7 @@ span {
     cursor: pointer;
 }
 
-.login-box p:has(input[type="checkbox"]) {
+.auth-box p:has(input[type="checkbox"]) {
     display: flex;
     flex-direction: row-reverse;
     align-items: center;
@@ -138,4 +138,13 @@ span {
 
 .text-center{
     text-align: center;
+}
+
+.errorlist{
+    color: rgb(237, 74, 74);
+    font-weight: bold;
+}
+
+.errors {
+    display: none;
 }

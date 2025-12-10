@@ -10,8 +10,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="login-container cardblock">
-    <form method="POST" class="login-box">
+<div class="auth-container">
+    <form method="POST" class="auth-box">
         {% csrf_token %}
         <h1 class="text-center">Увійти</h1>
 
@@ -23,7 +23,7 @@
         
         {{ form.as_p }}
         <button type="submit" class="button-submit">Увійти</button>
-        <p class="p-center">Don't have an account? <span class="span">Sign Up</span></p>
+        <p class="p-center">Don't have an account? <span class="span"><a href="{% url 'account_signup' %}">Sign Up</a></span></p>
         <p class="p-center line">Or With</p>
 
         <div class="flex-row">
