@@ -2,61 +2,61 @@ from django import forms
 from .models import Car, Owner
 from .constants import label_vin
 
-class CarForm(forms.ModelForm):
+class AddCarForm(forms.ModelForm):
     class Meta:
         model = Car
         fields = [
-            "vin_code",
-            "fuel_type",
-            "mark",
-            "model",
-            "color",
-            "year",
-            "mileage",
-            "drive_type",
-            "photo",
-            "owner",
+            'vin_code',
+            'license_plate',
+            'mark',
+            'model',
+            'year',
+            'mileage'
         ]
 
         widgets = {
-            "vin_code": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "VIN код"
-            }),
-            "fuel_type": forms.Select(attrs={
-                "class": "border rounded w-full p-2"
-            }),
-            "mark": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "Марка"
-            }),
-            "model": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "Модель"
-            }),
-            "color": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "Колір"
-            }),
-            "year": forms.NumberInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "2020"
-            }),
-            "mileage": forms.NumberInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "123000"
-            }),
-            "drive_type": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "FWD / RWD / AWD"
-            }),
-            "photo": forms.ClearableFileInput(attrs={
-                "class": "mt-2"
-            }),
-            "owner": forms.Select(attrs={
-                "class": "border rounded w-full p-2 bg-white"
-            }),
+            "vin_code": forms.TextInput(
+                attrs={
+                    "class": "border_input w-full",
+                    "placeholder": "VIN код",
+                }
+            ),
+            "license_plate": forms.TextInput(
+                attrs={
+                    "class": "border_input w-full",
+                    "placeholder": "Номерний знак",
+                }
+            ),
+
+            "mark": forms.TextInput(
+                attrs={
+                    "class": "border_input mark-model-input",
+                    "placeholder": "Марка",
+                }
+            ),
+            "model": forms.TextInput(
+                attrs={
+                    "class": "border_input mark-model-input",
+                    "placeholder": "Модель",
+                }
+            ),
+
+            "year": forms.NumberInput(
+                attrs={
+                    "class": "border_input w-full",
+                    "placeholder": "Рік",
+                }
+            ),
+            "mileage": forms.NumberInput(
+                attrs={
+                    "class": "border_input w-full",
+                    "placeholder": "Пробіг"
+                }
+            )
         }
+
+
+        
 
 class OwnerForm(forms.ModelForm):
     class Meta:

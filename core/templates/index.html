@@ -5,12 +5,93 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block scripts_js%}{% endblock %}
-    {% block title %}{% endblock %}
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <div class="header"></div>
-    {% block content %}
-    {% endblock %}
-    <div class="footer"></div>
+    <div class="content">
+        <div class="header">
+            <div class="logo_block">
+                <h3 class="title">Fleet manager</h3>
+                <p class="text-muted">Система управління автопарком</p>
+            </div>
+            <hr class="x-separate">
+            <div class="navigation_block">
+                <div class="nav_link_block">
+                    <h4 class="text-muted link_title">Швидкий доступ</h4>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                </div>
+                <div class="nav_link_block">
+                    <h4 class="text-muted link_title">Швидкий доступ</h4>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                    <a href="/" class="nav_link_btn selected_link">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                    <a href="/" class="nav_link_btn">
+                        <div class="nav_link">
+                            <div class="link_ico"></div>
+                            <p>Збережені</p>
+                        </div>
+                        <div class="counter">2</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <hr class="y-separate">
+        <div class="info_block">
+            <div class="block_head">
+                {% block head %}
+                {% endblock %}
+            </div>
+            <div class="detail_info">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,15 +1,41 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView, CreateView, ListView, View, TemplateView
 from django.shortcuts import get_object_or_404
-from .forms import CarForm, OwnerForm
+from .forms import AddCarForm, OwnerForm
 from .models import Car, Owner
 from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse
 from .mixins import RoleRequiredMixin
+from django.shortcuts import render, redirect
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cars_active = Car.objects.filter(statuse="Active").values('mark', 'model', 'year', 'vin_code', 'statuse', 'license_plate')
+        context['cars_active'] = cars_active
+        context['form'] = AddCarForm()
+        return context
+    
+
+class AddCarView(View):
+    def post(self, request):
+        form = AddCarForm(request.POST)
+
+        if form.is_valid():
+            car = form.save()
+            return JsonResponse({
+                "status": "ok",
+                "id": car.uuid,
+                "message": "Авто успішно додано!"
+            })
+
+        return JsonResponse({
+            "status": "error",
+            "errors": form.errors
+        }, status=400)
 
 # class NotificationsView(LoginRequiredMixin, TemplateView):
 #     template_name = "notifications.html"

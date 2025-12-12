@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
+from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
 import uuid
 
 
@@ -49,7 +49,7 @@ class AbstractTimeStampModel(models.Model):
         abstract=True
 
 
-class User(AbstractBaseUser, AbstractTimeStampModel):
+class User(AbstractBaseUser, AbstractTimeStampModel, PermissionsMixin):
     uuid = models.UUIDField(
         default=uuid.uuid4, 
         primary_key=True, 
@@ -98,23 +98,38 @@ class Owner(AbstractTimeStampModel):
         return f"{self.first_name} {self.last_name}"
     
 
+class StatuseChoice(models.TextChoices):
+    ACTIVE = "Active"
+    AWAITE = "Await"
+    PROCESSING = "Processing"
+    SERVICE = "Service"
+    
+
 class Car(AbstractTimeStampModel):
     uuid=models.UUIDField(
         default=uuid.uuid4, 
         primary_key=True, 
         editable=False
     )
+    mark=models.CharField(max_length=55)
+    model=models.CharField(max_length=55)
+    color=models.CharField(max_length=25)
+    year=models.IntegerField()
     vin_code=models.CharField(max_length=55)
+    license_plate = models.CharField(max_length=8)
     fuel_type = models.CharField(
         max_length=20,
         choices=FuelType.choices,
         blank=True,
         null=True
     )
-    mark=models.CharField(max_length=55)
-    model=models.CharField(max_length=55)
-    color=models.CharField(max_length=25)
-    year=models.IntegerField()
+    statuse = models.CharField(
+        max_length=20,
+        choices=StatuseChoice.choices,
+        blank=True,
+        null=True,
+        default=StatuseChoice.ACTIVE
+    )
     mileage=models.DecimalField(max_digits=10, decimal_places=1)
     drive_type=models.CharField(max_length=55)
     photo = models.ImageField(upload_to="car_photos/", blank=True, null=True)

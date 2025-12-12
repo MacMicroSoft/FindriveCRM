@@ -1,10 +1,47 @@
 {% extends 'index.html' %}
 
-{% block title %} {% endblock %}
+{% block title %}Автопарк{% endblock %}
+
+{% block head %}
+    <div class="title_action_block">
+        <div class="block-add">
+            <h2>Автопарк</h2>
+            <button type="button" id="openModalBtn" class="open-modal-btn">+ Додати авто</button>
+        </div>
+
+        <div class="nav_btn_action">
+            <button>Активні</button>
+            <button>Очікуючі (3)</button>
+        </div>
+        <input class="search" type="text" name="" id="" placeholder="Пошук за номером, маркою, VIN">
+    </div>
+{% endblock %}
 
 {% block content %}
+    {% for car in cars_active %}
+    <div class="car_block">
+        <div class="base_info">
+            <div class="statuse">
+                <p class="car-model">{{car.mark}} {{car.model}}</p>
+                <div class="stat">{{car.statuse}}</div>
+            </div>
+            <p class="year">{{car.year}}</p>
+        </div>
+        <p class="car-number">{{car.license_plate}}</p>
+        <div class="vin-block">
+            <p class="vin">{{car.vin_code}}</p>
+            <div class="star"></div>
+        </div>
+        <hr class="x-separate">
+        <p class="car-owner">Власник: Іван Петренко</p>
+    </div>
+    {% endfor %}
+
+
     <h1>Dashboard</h1>
     <p>logined user: {{user.username}}</p>
     <p>logined user email: {{user.email}}</p>
     <a href="{% url 'account_logout' %}">Вийти</a>
+
+    {% include 'components/add_car_form.html' %}
 {% endblock %}

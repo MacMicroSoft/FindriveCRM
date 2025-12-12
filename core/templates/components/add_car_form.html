@@ -1,0 +1,80 @@
+{% load static %}
+
+<div id="addCarModal" class="custom-modal">
+  <div class="custom-modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Додати авто</h5>
+        <button type="button" class="close-modal" id="closeModalBtn">&times;</button>
+      </div>
+
+      <form method="POST" action="{% url 'add_car_ajax' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+
+            {{ form.vin_code }}
+            {{ form.license_plate }}
+
+            <div class="mark-model-wrapper">
+                {{ form.mark }}
+                {{ form.model }}
+            </div>
+
+            {{ form.year }}
+            {{ form.mileage }}
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn-save">Зберегти</button>
+        </div>
+      </form>
+  </div>
+</div>
+
+<script>
+    const modal = document.getElementById("addCarModal");
+    const openBtn = document.getElementById("openModalBtn");
+    const closeBtn = document.getElementById("closeModalBtn");
+
+    openBtn.addEventListener("click", () => {
+        modal.style.display = "flex";
+    });
+
+    closeBtn.addEventListener("click", () => {
+        modal.style.display = "none";
+    });
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+
+    form.addEventListener("submit", async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        const response = await fetch("{% url 'add_car_ajax' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.status === "ok") {
+            modal.style.display = "none";
+            form.reset();
+        } else {
+            console.log("Помилки форми:", data.errors);
+        }
+    });
+    
+</script>
+
