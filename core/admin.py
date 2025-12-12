@@ -10,4 +10,4 @@ class PersonAdmin(admin.ModelAdmin):
 
 @admin.register(Car)
 class PersonAdmin(admin.ModelAdmin):
-    list_display = ['mark', 'model', 'year', 'owner', 'statuse']
+    list_display = ['mark', 'model', 'year', 'owner', 'status']

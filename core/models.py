@@ -27,19 +27,11 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(username, email, password, **kwargs)
 
-class Roles(models.TextChoices):
+class RolesChoice(models.TextChoices):
     CUSTOMER = "customer"
     ADMIN = "admin"
     MANAGER = "auto_manager"
     FINANCE= "finance_manager"
-
-
-class FuelType(models.TextChoices):
-    PETROL = "petrol", "Petrol"
-    DIESEL = "diesel", "Diesel"
-    ELECTRIC = "electric", "Electric"
-    HYBRID = "hybrid", "Hybrid"
-
 
 class AbstractTimeStampModel(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
@@ -58,8 +50,8 @@ class User(AbstractBaseUser, AbstractTimeStampModel, PermissionsMixin):
     phone=models.CharField(max_length=20, blank=True, null=True)
     role = models.CharField(
         max_length=20,
-        choices=Roles.choices,
-        default=Roles.CUSTOMER
+        choices=RolesChoice.choices,
+        default=RolesChoice.CUSTOMER
     )
     email = models.EmailField(blank=True, null=True, max_length=32, unique=True)
     username = models.CharField(max_length=32, unique=True)
@@ -98,11 +90,18 @@ class Owner(AbstractTimeStampModel):
         return f"{self.first_name} {self.last_name}"
     
 
-class StatuseChoice(models.TextChoices):
+class StatusChoice(models.TextChoices):
     ACTIVE = "Active"
     AWAITE = "Await"
     PROCESSING = "Processing"
     SERVICE = "Service"
+    
+
+class FuelTypeChoice(models.TextChoices):
+    PETROL = "petrol", "Petrol"
+    DIESEL = "diesel", "Diesel"
+    ELECTRIC = "electric", "Electric"
+    HYBRID = "hybrid", "Hybrid"
     
 
 class Car(AbstractTimeStampModel):
@@ -119,16 +118,16 @@ class Car(AbstractTimeStampModel):
     license_plate = models.CharField(max_length=8)
     fuel_type = models.CharField(
         max_length=20,
-        choices=FuelType.choices,
+        choices=FuelTypeChoice.choices,
         blank=True,
         null=True
     )
-    statuse = models.CharField(
+    status = models.CharField(
         max_length=20,
-        choices=StatuseChoice.choices,
+        choices=StatusChoice.choices,
         blank=True,
         null=True,
-        default=StatuseChoice.ACTIVE
+        default=StatusChoice.ACTIVE
     )
     mileage=models.DecimalField(max_digits=10, decimal_places=1)
     drive_type=models.CharField(max_length=55)

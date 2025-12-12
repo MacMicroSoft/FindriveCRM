@@ -14,7 +14,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        cars_active = Car.objects.filter(statuse="Active").values('mark', 'model', 'year', 'vin_code', 'statuse', 'license_plate')
+        cars_active = Car.objects.filter(status="Active").values('mark', 'model', 'year', 'vin_code', 'status', 'license_plate')
         context['cars_active'] = cars_active
         context['form'] = AddCarForm()
         return context
@@ -25,7 +25,7 @@ class AddCarView(View):
         form = AddCarForm(request.POST)
 
         if form.is_valid():
-            car = form.save()
+            car: Car = form.save()
             return JsonResponse({
                 "status": "ok",
                 "id": car.uuid,

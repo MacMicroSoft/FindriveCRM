@@ -1,8 +1,19 @@
 from django import forms
-from .models import Car, Owner
+from .models import Car, Owner, FuelTypeChoice, StatusChoice
 from .constants import label_vin
+from .services import get_owners_choice
 
 class AddCarForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['owner'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+
+    owner = forms.ModelChoiceField(
+        queryset=Owner.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={"class": "border_input w-full"}),
+        empty_label="Оберіть власника"
+    )
     class Meta:
         model = Car
         fields = [
@@ -11,7 +22,13 @@ class AddCarForm(forms.ModelForm):
             'mark',
             'model',
             'year',
-            'mileage'
+            'mileage',
+            'color',
+            'fuel_type',
+            'status',
+            'drive_type',
+            'photo',
+            'owner',
         ]
 
         widgets = {
@@ -27,7 +44,6 @@ class AddCarForm(forms.ModelForm):
                     "placeholder": "Номерний знак",
                 }
             ),
-
             "mark": forms.TextInput(
                 attrs={
                     "class": "border_input mark-model-input",
@@ -40,7 +56,6 @@ class AddCarForm(forms.ModelForm):
                     "placeholder": "Модель",
                 }
             ),
-
             "year": forms.NumberInput(
                 attrs={
                     "class": "border_input w-full",
@@ -52,9 +67,26 @@ class AddCarForm(forms.ModelForm):
                     "class": "border_input w-full",
                     "placeholder": "Пробіг"
                 }
-            )
+            ),
+            "color": forms.TextInput(
+                attrs={
+                    "class": "border_input w-full",
+                    "placeholder": "Колір"
+                }
+            ),
+            "fuel_type": forms.Select(attrs={"class": "border_input w-full"}),
+            "status": forms.Select(attrs={"class": "border_input w-full"}),
+            "drive_type": forms.TextInput(
+                attrs={
+                    "class": "border_input mark-model-input",
+                    "placeholder": "Привід машини",
+                }
+            ),
+            "photo": forms.ClearableFileInput(attrs={
+                "class": "border_input w-full",
+                "accept": "image/*"
+            }),
         }
-
 
         
 
