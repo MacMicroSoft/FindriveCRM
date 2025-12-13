@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete owner</title>
+</head>
+<body>
+
+<h1>Delete owner</h1>
+
+<p>Are you sure you want to delete this owner?</p>
+
+<p>
+    <strong>{{ object }}</strong>
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Yes, delete</button>
+    <a href="{% url 'owner-list' %}">Cancel</a>
+</form>
+
+</body>
+</html>

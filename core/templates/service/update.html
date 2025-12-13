@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update service</title>
+</head>
+<body>
+
+<h1>Update service</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+</form>
+
+<a href="{% url 'service-detail' object.pk %}">Cancel</a>
+
+</body>
+</html>

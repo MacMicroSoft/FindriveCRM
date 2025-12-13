@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Owners</title>
+</head>
+<body>
+
+<h1>Owners list</h1>
+
+<a href="{% url 'owner-create' %}">Create Owner</a>
+
+    <ul>
+    {% for owner in object_list %}
+        <li>
+            {{ owner }}
+            —
+            Cars:
+            {% if owner.cars_count > 0 %}
+                {{ owner.cars_count }}
+            {% else %}
+                0
+            {% endif %}
+            |
+            <a href="{% url 'owner-detail' owner.pk %}">View</a>
+            |
+            <a href="{% url 'owner-update' owner.pk %}">Edit</a>
+            |
+            <a href="{% url 'owner-delete' owner.pk %}">Delete</a>
+        </li>
+    {% endfor %}
+    </ul>
+<hr>
+
+<div>
+    {% if is_paginated %}
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        {% endif %}
+
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">Next</a>
+        {% endif %}
+    {% endif %}
+</div>
+
+</body>
+</html>

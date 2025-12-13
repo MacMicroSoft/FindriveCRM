@@ -4,13 +4,14 @@ from . import views as view
 urlpatterns = [
     path("", view.DashboardView.as_view(), name="dashboard"),
     path("cars/create/", view.AddCarView.as_view(), name="add_car_ajax"),
-    # path("cars/<uuid:pk>/", view.CarDetailView.as_view(), name="car_detail"),
-    # path("owner/create/", view.CreateOwnerView.as_view(), name="owner_create"),
-    # path("cars/", view.CarListView.as_view(), name="car_list"),
-    # path("owner/create/ajax/", view.OwnerCreateAjaxView.as_view(), name="owner_create_ajax"),
-    # path("owners/", view.OwnerListView.as_view(), name="owner_list"),
-    # path("invoices/", view.TemplateView.as_view(template_name="invoices/placeholder.html"), name="invoices"),
-    # path("settings/", view.TemplateView.as_view(template_name="settings.html"), name="settings"),
-    # path("notifications/", view.NotificationsView.as_view(), name="notifications"),
-    # path("chat/", view.ChatView.as_view(), name="chat"),
+    path("owners/", view.OwnerListView.as_view(), name="owner-list"),
+    path("owners/<uuid:pk>/", view.OwnerDetailView.as_view(), name="owner-detail"),
+    path("owners/create/", view.OwnerCreateView.as_view(), name="owner-create"),
+    path("owners/update/<uuid:pk>/", view.OwnerUpdateView.as_view(), name="owner-update"),
+    path("owners/delete/<uuid:pk>/", view.OwnerDeleteView.as_view(), name="owner-delete"),
+    path("services/", view.ServiceListView.as_view(), name="service-list"),
+    path("services/create/", view.ServiceCreateView.as_view(), name="service-create"),
+    path("services/update/<uuid:pk>/", view.ServiceUpdateView.as_view(), name="service-update"),
+    path("services/delete/<uuid:pk>/", view.ServiceDeleteView.as_view(), name="service-delete"),
+    path("services/<uuid:pk>/", view.ServiceDetailView.as_view(), name="service-detail")
 ]

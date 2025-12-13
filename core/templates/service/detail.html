@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Service detail</title>
+</head>
+<body>
+
+<h1>Service detail</h1>
+
+<p><strong>Name:</strong> {{ object.name }}</p>
+<p><strong>Phone:</strong> {{ object.phone }}</p>
+<p><strong>Location:</strong> {{ object.location }}</p>
+<p><strong>Social media:</strong> {{ object.social_media }}</p>
+<p><strong>Has social media:</strong> {{ object.is_social_media }}</p>
+
+<a href="{% url 'service-update' object.pk %}">Edit</a> |
+<a href="{% url 'service-list' %}">Back to list</a>
+
+</body>
+</html>

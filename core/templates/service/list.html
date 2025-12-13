@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Services</title>
+</head>
+<body>
+
+<h1>Services list</h1>
+
+<a href="{% url 'service-create' %}">Create service</a>
+
+<ul>
+    {% for service in object_list %}
+        <li>
+            {{ service.name }}
+            |
+            <a href="{% url 'service-detail' service.pk %}">View</a>
+            |
+            <a href="{% url 'service-update' service.pk %}">Edit</a>
+            |
+            <a href="{% url 'service-delete' service.pk %}">Delete</a>
+        </li>
+    {% empty %}
+        <li>No services found.</li>
+    {% endfor %}
+</ul>
+
+</body>
+</html>

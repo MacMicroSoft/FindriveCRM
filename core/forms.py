@@ -1,5 +1,5 @@
 from django import forms
-from .models import Car, Owner, FuelTypeChoice, StatusChoice
+from .models import Car, Owner, FuelTypeChoice, StatusChoice, Service
 from .constants import label_vin
 from .services import get_owners_choice
 
@@ -127,3 +127,14 @@ class OwnerForm(forms.ModelForm):
                 "class": "h-4 w-4 text-blue-600"
             }),
         }
+
+class ServiceForm(forms.ModelForm):
+    class Meta:
+        model=Service
+        fields= [
+            'name',
+            'location',
+            'phone',
+            'social_media',
+            'has_social_media'
+        ]

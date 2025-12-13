@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Owner detail</title>
+</head>
+<body>
+
+<h1>Owner detail</h1>
+
+<p><strong>UUID:</strong> {{ object.uuid }}</p>
+<p><strong>First Name:</strong> {{ object.first_name }}</p>
+<p><strong>Last Name:</strong> {{ object.last_name }}</p>
+<p><strong>Phone:</strong> {{ object.phone }}</p>
+<p><strong>Email:</strong> {{ object.email }}</p>
+<p><strong>Active Telegram:</strong> {{ object.is_active_telegram }}</p>
+
+
+<a href="{% url 'owner-list' %}">Back to list</a>
+
+</body>
+</html>

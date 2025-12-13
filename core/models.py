@@ -81,18 +81,18 @@ class Owner(AbstractTimeStampModel):
     uuid=models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     first_name=models.CharField(max_length=255)
     last_name=models.CharField(max_length=255)
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    telegram_link=models.CharField(max_length=255)
-    email=models.CharField(max_length=55)
+    phone = models.CharField(max_length=20, blank=True, null=True, unique=True)
+    telegram_link=models.CharField(max_length=255, unique=True)
+    email=models.CharField(max_length=55, unique=True)
     is_active_telegram=models.BooleanField(default=False)
-
+    
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
     
 
 class StatusChoice(models.TextChoices):
     ACTIVE = "Active"
-    AWAITE = "Await"
+    AWAIT = "Await"
     PROCESSING = "Processing"
     SERVICE = "Service"
     
@@ -141,26 +141,18 @@ class Car(AbstractTimeStampModel):
         blank=True
     )
 
+    @property
+    def total_expenses_amount(self):
+        service_total = sum(
+            item.total for item in self.car_expenses.all()
+        )
+        other_total = sum(
+            item.total_amount() for item in self.other_expenses.all()
+        )
+        return service_total + other_total
+    
     def __str__(self):
         return f"{self.mark} {self.model} {self.year}"
-
-
-class CarExpense(AbstractTimeStampModel):
-    car = models.OneToOneField(
-        Car,
-        on_delete=models.CASCADE,
-        related_name="expense"
-    )
-    @property
-    def total_amount(self):
-        service_total_amount=sum(
-            [item.total for item in self.car.car_expenses.all()]
-        )
-        others_total_amount=sum(
-            [item.total for item in self.car.other_expenses.all()]
-        )
-        return service_total_amount + others_total_amount
-
 
 class Service(AbstractTimeStampModel):
     uuid=models.UUIDField(
@@ -172,11 +164,11 @@ class Service(AbstractTimeStampModel):
     phone=models.CharField(max_length=20, blank=True, null=True)
     location=models.CharField(max_length=255)
     social_media=models.CharField(max_length=55, blank=True)
-    is_social_media=models.BooleanField(default=False)
+    has_social_media=models.BooleanField(default=False)
 
     cars = models.ManyToManyField(
         Car,
-        related_name="services"
+        related_name="services",
     )  
 
     def __str__(self):
@@ -261,9 +253,4 @@ class Invoice(AbstractTimeStampModel):
     cars=models.ManyToManyField(
         Car, 
         related_name="invoices"
-    )
-
-    expense=models.ManyToManyField(
-        CarExpense,
-        related_name="expense_invoices"
     )

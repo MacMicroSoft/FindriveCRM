@@ -1,13 +1,25 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import DetailView, CreateView, ListView, View, TemplateView
-from django.shortcuts import get_object_or_404
-from .forms import AddCarForm, OwnerForm
-from .models import Car, Owner
-from django.urls import reverse_lazy, reverse
+from django.db.models import Count
 from django.http import JsonResponse
-from .mixins import RoleRequiredMixin
-from django.shortcuts import render, redirect
-
+from django.views.generic import (
+    DetailView, 
+    CreateView, 
+    ListView, 
+    View, 
+    TemplateView, 
+    UpdateView, 
+    DeleteView
+)
+from .forms import (
+    AddCarForm, 
+    OwnerForm, 
+    ServiceForm
+)
+from .models import (
+    Car, 
+    Owner,
+    Service
+    )
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
@@ -37,68 +49,63 @@ class AddCarView(View):
             "errors": form.errors
         }, status=400)
 
-# class NotificationsView(LoginRequiredMixin, TemplateView):
-#     template_name = "notifications.html"
 
-# class ChatView(LoginRequiredMixin, TemplateView):
-#     template_name = "chat.html"
-
-# class OwnerCreateAjaxView(RoleRequiredMixin, View):
-#     required_roles = ["auto_manager"]
-
-#     def post(self, request, *args, **kwargs):
-#         form = OwnerForm(request.POST)
-#         if form.is_valid():
-#             owner = form.save()
-#             return JsonResponse({
-#                 "success": True,
-#                 "id": owner.pk,
-#                 "name": f"{owner.first_name} {owner.last_name}"
-#             })
-#         return JsonResponse({"success": False, "errors": form.errors}, status=400)
-
-# class CarDetailView(RoleRequiredMixin, DetailView):
-#     model = Car
-#     template_name = "cars/detail.html"
-#     required_roles = ["auto_manager"]
-
-#     def get_queryset(self):
-#         return Car.objects.all()
-
-# class CarCreateView(RoleRequiredMixin, CreateView):
-#     model = Car
-#     form_class = CarForm
-#     template_name = "cars/create.html"
-#     required_roles = ["auto_manager"]
+class OwnerCreateView(LoginRequiredMixin, CreateView):
+    model=Owner
+    form_class=OwnerForm
+    template_name="owner/create.html"
+    success_url="/core/owners/"
 
 
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         context["owner_form"] = OwnerForm()
-#         return context
+class OwnerListView(LoginRequiredMixin, ListView):
+    model=Owner
+    paginate_by=20
+    template_name="owner/list.html"
 
-#     def get_success_url(self):
-#         return reverse("car_detail", kwargs={"pk": self.object.pk})
+    def get_queryset(self):
+        owner_cars=(Owner.objects
+                    .annotate(cars_count=Count("cars"))
+                    .order_by("first_name", "last_name")
+                    )
+        return owner_cars            
+    
+# View for owner car list
 
-# class CarListView(RoleRequiredMixin, ListView):
-#     model = Car
-#     template_name = "cars/list.html"
-#     required_roles = ["auto_manager"]
-#     paginate_by = 20
+class OwnerDetailView(LoginRequiredMixin, DetailView):
+    model=Owner
+    template_name="owner/detail.html"
 
+class OwnerUpdateView(LoginRequiredMixin, UpdateView):
+    model=Owner
+    form_class=OwnerForm
+    template_name="owner/update.html"
+    success_url="/core/owners/"
 
-# class CreateOwnerView(RoleRequiredMixin, CreateView):
-#     model = Owner
-#     form_class = OwnerForm
-#     required_roles = ["auto_manager"]
-#     template_name = "owner/create.html"
-#     success_url = reverse_lazy("car_create")
+class OwnerDeleteView(LoginRequiredMixin, DeleteView):
+    model=Owner
+    template_name="owner/owner_confirm_delete.html"
+    success_url="/core/owners/"
 
-#     def form_valid(self, form):
-#         return super().form_valid(form)
+class ServiceCreateView(LoginRequiredMixin, CreateView):
+    model=Service
+    form_class=ServiceForm
+    template_name="service/create.html"
+    success_url="/core/services/"
 
-# class OwnerListView(RoleRequiredMixin, ListView):
-#     model = Owner
-#     template_name = "owner/list.html"
-#     required_roles = ["auto_manager"]
-#     paginate_by = 20
+class ServiceDetailView(LoginRequiredMixin, DetailView):
+    model=Service
+    template_name="service/detail.html"
+
+class ServiceDeleteView(LoginRequiredMixin, DeleteView):
+    model=Service
+    template_name="service/service_confirm_delete.html"
+    success_url="core/services/"
+class ServiceUpdateView(LoginRequiredMixin, UpdateView):
+    model=Service
+    form_class=ServiceForm
+    template_name="service/update.html"
+    success_url="/core/services/"
+
+class ServiceListView(LoginRequiredMixin, ListView):
+    model=Service
+    template_name="service/list.html"
