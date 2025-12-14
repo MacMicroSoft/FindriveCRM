@@ -89,7 +89,6 @@ def get_outlay(uuid) -> Outlay:
 
 def update_outlay(uuid, form: OutlayFrom) -> Outlay:
     outlay = Outlay.objects.get(uuid = uuid)
-    print(outlay)
     amount: OutlayAmount = outlay.amount
 
     cd = form.cleaned_data
@@ -118,7 +117,5 @@ def update_outlay(uuid, form: OutlayFrom) -> Outlay:
         amount.save()
 
         outlay.cars.set(cd["car"])
-
-        outlay.save()
 
     return outlay

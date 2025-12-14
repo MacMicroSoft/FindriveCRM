@@ -78,12 +78,10 @@ class OutlatDetailView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request, pk):
-        print('hereee')
-        outlay = get_outlay(pk)
         form = OutlayFrom(request.POST)
 
         if form.is_valid():
-            update_outlay(pk, form)
+            outlay = update_outlay(pk, form)
             return redirect("outlay_detail", pk=pk)
 
         return render(request, self.template_name, {
