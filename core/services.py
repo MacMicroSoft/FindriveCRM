@@ -5,6 +5,7 @@ from .forms import OutlayFrom
 from django.db import transaction
 
 
+
 def get_owners_choice() -> list[tuple]:
     owners = Owner.objects.annotate(
         full_name=Concat(F("first_name"), Value(" "), F("last_name"))
@@ -119,3 +120,55 @@ def update_outlay(uuid, form: OutlayFrom) -> Outlay:
         outlay.cars.set(cd["car"])
 
     return outlay
+
+
+import pdfplumber
+import re 
+import tabula
+import pandas as pd
+
+
+def pdf_parser(filepath) -> dict:
+    TABLE_FIELDS = ('id', 'item_name', 'amount', 'price_netto', 'price_netto2', 'tax_percent', 'tax_price', 'price_brutto')
+
+    tables = tables = tabula.read_pdf(filepath, pages="1", lattice=True)
+    df = tables[0]
+    df.columns = TABLE_FIELDS
+    first_col = df.columns[0]
+    df_filtered = df[pd.to_numeric(df[first_col], errors="coerce").notna()]
+    table = df_filtered.to_dict(orient="records")
+
+
+    reg_values = [
+        ("invoice_number", re.compile(r'Faktura\s+numer\s+([A-Z\d/]+)', re.IGNORECASE)),
+        ("sale_date", re.compile(r'Data\s+wystawienia:\s+Puchały,\s*(\d{4}-\d{2}-\d{2})', re.IGNORECASE)),
+        ("sold_date_limit", re.compile(r'Data\s+sprzedaży:\s*(\d{4}-\d{2}-\d{2})', re.IGNORECASE)),
+        ("payment_date_limit", re.compile(r'Termin\s+płatności:\s*(\d{4}-\d{2}-\d{2})', re.IGNORECASE)),
+        ("payment", re.compile(r'Płatność:\s*([A-ZĄĆĘŁŃÓŚŻŹ]*)', re.IGNORECASE)),
+        ("company_nip", re.compile(r'NIP\s+(\d+)', re.IGNORECASE)),
+        ("company_bdo", re.compile(r'BDO\s+(\d+)', re.IGNORECASE)),
+        ("price_netto", re.compile(r'Wartość netto\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
+        ("price_vat", re.compile(r'Wartość VAT\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
+        ("price_brutto", re.compile(r'Wartość brutto\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
+        ("to_pay", re.compile(r'Do zapłaty\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
+    ]
+
+    str_data = {}
+
+    with pdfplumber.open("test.pdf") as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if not text:
+                continue
+
+            for line in text.split('\n'):
+                for key, pattern in reg_values:
+                    match = pattern.search(line)
+                    if match: str_data[key] = match.group(1)
+    
+
+    return {
+        'table': table,
+        'str_data': str_data,
+    }
+
