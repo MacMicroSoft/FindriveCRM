@@ -1,31 +1,31 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import DetailView, CreateView, ListView, View, TemplateView
+from django.views.generic import DetailView, CreateView, ListView, View, TemplateView, DeleteView
 from django.shortcuts import get_object_or_404
-from .forms import AddCarForm, OwnerForm
-from .models import Car, Owner
+from .forms import AddCarForm, OwnerForm, OutlayFrom
+from .services import get_cars_data, create_outlay, get_outlays, get_outlay_form_data, get_outlay, update_outlay
 from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse
 from .mixins import RoleRequiredMixin
 from django.shortcuts import render, redirect
+from pprint import pprint
+from .models import Outlay
 
 
-class DashboardView(LoginRequiredMixin, TemplateView):
+class DashboardView(LoginRequiredMixin, View):
     template_name = "dashboard.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        cars_active = Car.objects.filter(status="Active").values('mark', 'model', 'year', 'vin_code', 'status', 'license_plate')
+    def get(self,request):
+        context = {}
+        cars_active = get_cars_data()
         context['cars_active'] = cars_active
         context['form'] = AddCarForm()
-        return context
+        return render(request, self.template_name, context)
     
-
-class AddCarView(View):
     def post(self, request):
         form = AddCarForm(request.POST)
 
         if form.is_valid():
-            car: Car = form.save()
+            car = form.save()
             return JsonResponse({
                 "status": "ok",
                 "id": car.uuid,
@@ -36,6 +36,67 @@ class AddCarView(View):
             "status": "error",
             "errors": form.errors
         }, status=400)
+
+
+class OutlayView(LoginRequiredMixin, View):
+    template_name = "outlay.html"
+
+    def get(self, request):
+        context = {}
+        context['form'] = OutlayFrom()
+        context['outlays'] = get_outlays()
+
+        return render(request, self.template_name, context)
+    
+
+    def post(self, request):
+        form = OutlayFrom(request.POST)
+
+        if form.is_valid():
+            outlay_obj = create_outlay(
+                type = form.cleaned_data.get('service_type'),
+                category = form.cleaned_data.get('category'),
+                category_name = form.cleaned_data.get('category_name'),
+                service_name = form.cleaned_data.get('service_name'),
+                description = form.cleaned_data.get('description'),
+                cars = form.cleaned_data.get('car'),
+                created_at = form.cleaned_data.get('date'),
+                price_per_item = form.cleaned_data.get('price_per_item'),
+                item_count = form.cleaned_data.get('item_count'),
+                full_price = form.cleaned_data.get('full_price'),
+            )
+        return JsonResponse({
+            'status': 'ok'
+        })
+
+class OutlatDetailView(LoginRequiredMixin, View):
+    template_name = "outlay_detail.html"
+    def get(self, request, pk):
+        context = {}
+        context['form'] = get_outlay_form_data(pk)
+        context['outlay_uuid'] = pk
+        return render(request, self.template_name, context)
+
+    def post(self, request, pk):
+        print('hereee')
+        outlay = get_outlay(pk)
+        form = OutlayFrom(request.POST)
+
+        if form.is_valid():
+            update_outlay(pk, form)
+            return redirect("outlay_detail", pk=pk)
+
+        return render(request, self.template_name, {
+            "form": form,
+            "outlay": outlay,
+        })
+
+class OutlayDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        outlay = get_object_or_404(Outlay, pk=pk)
+        outlay.delete()
+        return redirect("outlay")
+
 
 # class NotificationsView(LoginRequiredMixin, TemplateView):
 #     template_name = "notifications.html"

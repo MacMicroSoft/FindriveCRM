@@ -1,0 +1,102 @@
+{% load static %}
+
+<div id="addCarModal" class="custom-modal">
+  <div class="custom-modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Додати авто</h5>
+        <button type="button" class="close-modal" id="closeModalBtn">&times;</button>
+      </div>
+
+      <form method="POST" action="{% url 'outlay' %}">
+        {% csrf_token %}
+        <div class="modal-body">
+            {{form.as_p}}
+            
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn-save">Створити</button>
+        </div>
+      </form>
+  </div>
+</div>
+
+<script>
+    const modal = document.getElementById("addCarModal");
+    const openBtn = document.getElementById("openModalBtn");
+    const closeBtn = document.getElementById("closeModalBtn");
+
+    openBtn.addEventListener("click", () => {
+        modal.style.display = "flex";
+    });
+
+    closeBtn.addEventListener("click", () => {
+        modal.style.display = "none";
+    });
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+    const serviceTypeRadios = document.querySelectorAll('input[name="service_type"]');
+    const categorySelect = document.querySelector('#id_category');
+    const categoryWrapper = categorySelect.closest('p');
+    const serviceWrapper = document.querySelector('#id_service').closest('p');
+    const serviceNameWrapper = document.querySelector('#id_service_name').closest('p');
+    const categoryNameInput = document.querySelector('#id_category_name');
+    const categoryNameWrapper = categoryNameInput.closest('p');
+    
+    const priceTypeRadios = document.querySelectorAll('input[name="price_type"]');
+    const fullPriceWrapper = document.querySelector('#id_full_price').closest('p');
+    const partPriceWrapper = document.querySelector('#id_price_per_item').closest('p');
+    const amountWrapper = document.querySelector('#id_item_count').closest('p');
+
+    function toggleServiceFields() {
+        const selected = document.querySelector('input[name="service_type"]:checked')?.value;
+        if (selected === 'service') {
+            categoryWrapper.style.display = 'none';
+            serviceWrapper.style.display = 'block';
+            serviceNameWrapper.style.display = 'block';
+        } else {
+            categoryWrapper.style.display = 'block';
+            serviceWrapper.style.display = 'none';
+            serviceNameWrapper.style.display = 'none';
+        }
+    }
+
+    function togglePriceFields() {
+        console.log("price toggle")
+        const selected = document.querySelector('input[name="price_type"]:checked')?.value;
+        if (selected === 'full') {
+            fullPriceWrapper.style.display = 'block';
+            partPriceWrapper.style.display = 'none';
+            amountWrapper.style.display = 'none';
+        } else if (selected === 'part') {
+            fullPriceWrapper.style.display = 'none';
+            partPriceWrapper.style.display = 'block';
+            amountWrapper.style.display = 'block';
+        }
+    }
+
+    function toggleCategoryName() {
+        if (categorySelect.value === 'another') {   // 👈 value з choices
+            categoryNameWrapper.style.display = 'block';
+        } else {
+            categoryNameWrapper.style.display = 'none';
+            categoryNameInput.value = ''; // очищаємо поле
+        }
+    }
+
+    toggleServiceFields();
+    togglePriceFields();
+    toggleCategoryName();
+
+    serviceTypeRadios.forEach(radio => radio.addEventListener('change', toggleServiceFields));
+    priceTypeRadios.forEach(radio => radio.addEventListener('change', togglePriceFields));
+    categorySelect.addEventListener('change', toggleCategoryName);
+});
+</script>

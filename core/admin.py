@@ -1,13 +1,28 @@
 from django.contrib import admin
-from .models import User, Car
+from .models import User, Car, Outlay, OutlayAmount
 from django.contrib.auth.admin import UserAdmin
 
 
 @admin.register(User)
-class PersonAdmin(admin.ModelAdmin):
-    list_display = ['username', 'uuid', 'role', 'email', 'is_email_verified']
+class UserAdmin(admin.ModelAdmin):
+    list_display = ['first_name', 'last_name', 'uuid', 'role', 'email', 'is_email_verified']
 
 
 @admin.register(Car)
-class PersonAdmin(admin.ModelAdmin):
+class CarAdmin(admin.ModelAdmin):
     list_display = ['mark', 'model', 'year', 'owner', 'status']
+
+
+@admin.register(Outlay)
+class OutlayAdmin(admin.ModelAdmin):
+    list_display = ['uuid', 'type', 'category', 'description', 'cars_list']
+
+    def cars_list(self, obj):
+        return ", ".join(f'{car.mark} {car.model}' for car in obj.cars.all())
+
+    cars_list.short_description = "Авто"
+
+
+@admin.register(OutlayAmount)
+class OutlayAmountAdmin(admin.ModelAdmin):
+    list_display = ['uuid', 'price_per_item', 'item_count', 'full_price']

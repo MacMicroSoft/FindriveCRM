@@ -1,17 +1,18 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
 import uuid
-
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, username, email, password, **kwargs):
+    def create_user(self, first_name, last_name, email, password, **kwargs):
         if not email:
             raise ValueError('Provide Email filed')
 
         email = self.normalize_email(email=email)
 
         user = self.model(
-            username=username,
+            first_name=first_name,
+            last_name=last_name,
             email=email,
             **kwargs
         )
@@ -20,89 +21,93 @@ class CustomUserManager(BaseUserManager):
 
         return user
 
-    def create_superuser(self, username, email, password, **kwargs):
+    def create_superuser(self, first_name, last_name, email, password, **kwargs):
         kwargs.setdefault('is_staff', True)
         kwargs.setdefault('is_superuser', True)
         kwargs.setdefault('is_active', True)
 
-        return self.create_user(username, email, password, **kwargs)
+        return self.create_user(first_name, last_name, email, password, **kwargs)
 
-class RolesChoice(models.TextChoices):
+
+class UserRolesChoice(models.TextChoices):
     CUSTOMER = "customer"
     ADMIN = "admin"
     MANAGER = "auto_manager"
     FINANCE= "finance_manager"
 
+
 class AbstractTimeStampModel(models.Model):
-    created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now=True)
+    created_at=models.DateTimeField(auto_now_add=True, verbose_name="Створено")
+    updated_at=models.DateTimeField(auto_now=True, verbose_name="Оновлено")
 
     class Meta:
         abstract=True
 
 
-class User(AbstractBaseUser, AbstractTimeStampModel, PermissionsMixin):
-    uuid = models.UUIDField(
-        default=uuid.uuid4, 
-        primary_key=True, 
-        editable=False
-    )
-    phone=models.CharField(max_length=20, blank=True, null=True)
+class AbstractUserField(models.Model):
+    uuid=models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    first_name=models.CharField(max_length=32, verbose_name="Імя")
+    last_name=models.CharField(max_length=32, verbose_name="Призвіще")
+    email = models.EmailField(max_length=64, unique=True, verbose_name="Пошта")
+    phone=models.CharField(max_length=10, blank=True, null=True, verbose_name="Номер телефону")
+
+    class Meta:
+        abstract=True
+
+
+class User(AbstractBaseUser, AbstractTimeStampModel, PermissionsMixin, AbstractUserField):
     role = models.CharField(
         max_length=20,
-        choices=RolesChoice.choices,
-        default=RolesChoice.CUSTOMER
+        choices=UserRolesChoice.choices,
+        default=UserRolesChoice.CUSTOMER,
+        verbose_name="Роль користувача"
     )
-    email = models.EmailField(blank=True, null=True, max_length=32, unique=True)
-    username = models.CharField(max_length=32, unique=True)
-    is_email_verified=models.BooleanField(default=False)
-    is_blocked=models.BooleanField(default=False)
-    last_login_at=models.DateTimeField(null=True, blank=True)
-
-    is_active = models.BooleanField(default=True)
+    is_email_verified=models.BooleanField(default=False, verbose_name="Верифікована пошта")
+    last_login_at=models.DateTimeField(null=True, blank=True, verbose_name="В останнє залогінено")
+    is_active = models.BooleanField(
+        default=True, verbose_name="Активувати користувача",
+        help_text="Дозволити користувачу вхід в обліковий запис. Якщо False користувач буде заблокований"
+    )
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = ['first_name', 'last_name']
 
     objects = CustomUserManager()
-    
-    def save(self, *args, **kwargs):
-        # custom logic
-        super().save(*args, **kwargs)
-
-
-    def __str__(self):
-        return self.username
-    
-
-class Owner(AbstractTimeStampModel):
-    uuid=models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    first_name=models.CharField(max_length=255)
-    last_name=models.CharField(max_length=255)
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    telegram_link=models.CharField(max_length=255)
-    email=models.CharField(max_length=55)
-    is_active_telegram=models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
     
 
-class StatusChoice(models.TextChoices):
+class Owner(AbstractTimeStampModel, AbstractUserField):
+    telegram_link=models.CharField(max_length=255, verbose_name="Посилання на телеграм")
+    is_active_telegram=models.BooleanField(default=False, verbose_name="Активований телеграм")
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+    
+
+class CarStatusChoice(models.TextChoices):
     ACTIVE = "Active"
     AWAITE = "Await"
     PROCESSING = "Processing"
     SERVICE = "Service"
     
 
-class FuelTypeChoice(models.TextChoices):
+class CarFuelTypeChoice(models.TextChoices):
     PETROL = "petrol", "Petrol"
     DIESEL = "diesel", "Diesel"
     ELECTRIC = "electric", "Electric"
     HYBRID = "hybrid", "Hybrid"
-    
+
+
+class CarDriveTypeChoice(models.TextChoices):
+    FWD = "FWD", "Передній"
+    RWD = "RWD", "Задній"
+    AWD = "AWD", "Повний (AWD)"
+    WD4 = "4WD", "Повний (4WD)"
+
 
 class Car(AbstractTimeStampModel):
     uuid=models.UUIDField(
@@ -110,35 +115,41 @@ class Car(AbstractTimeStampModel):
         primary_key=True, 
         editable=False
     )
-    mark=models.CharField(max_length=55)
-    model=models.CharField(max_length=55)
-    color=models.CharField(max_length=25)
-    year=models.IntegerField()
-    vin_code=models.CharField(max_length=55)
-    license_plate = models.CharField(max_length=8)
+    mark=models.CharField(max_length=55, verbose_name='Марка авто')
+    model=models.CharField(max_length=55, verbose_name="Модель авто")
+    color=models.CharField(max_length=25, verbose_name="Колір авто")
+    year=models.IntegerField(validators=[MinValueValidator(1900), MaxValueValidator(2050)], verbose_name="Рік випуску")
+    vin_code=models.CharField(max_length=55, verbose_name="VIN номер авто", unique=True)
+    license_plate = models.CharField(max_length=8, verbose_name="Номерний знак авто")
     fuel_type = models.CharField(
         max_length=20,
-        choices=FuelTypeChoice.choices,
+        choices=CarFuelTypeChoice.choices,
         blank=True,
-        null=True
+        null=True,
+        verbose_name="Тип пального"
     )
     status = models.CharField(
         max_length=20,
-        choices=StatusChoice.choices,
+        choices=CarStatusChoice.choices,
         blank=True,
         null=True,
-        default=StatusChoice.ACTIVE
+        default=CarStatusChoice.ACTIVE,
+        verbose_name="Статус авто"
     )
-    mileage=models.DecimalField(max_digits=10, decimal_places=1)
-    drive_type=models.CharField(max_length=55)
-    photo = models.ImageField(upload_to="car_photos/", blank=True, null=True)
+    mileage=models.PositiveIntegerField(verbose_name="Пробіг авто")
+    drive_type=models.CharField(
+        max_length=55,
+        choices=CarDriveTypeChoice.choices,
+        verbose_name="Привід авто")
+    photo = models.ImageField(upload_to="car_photos/", blank=True, null=True, verbose_name="Фото авто")
     
     owner=models.ForeignKey(
         Owner, 
         on_delete=models.CASCADE, 
         related_name="cars",
         null=True,
-        blank=True
+        blank=True,
+        verbose_name="Власник авто"
     )
 
     def __str__(self):
@@ -245,6 +256,82 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 # TODO: implement proper Invoice → InvoiceItem → CarExpense structure
+
+class OutlayTypeChoice(models.TextChoices):
+    SERVICE = "service", "Сервіс"
+    OTHER = "other", "Інші"
+
+
+class OutlayCategoryChoice(models.TextChoices):
+    FUEL = "fuel", "Паливо"
+    PARTS = "parts", "Запчастини"
+    DOCUMENTS = "documents", "Документи"
+    ANOTHER = "another", "Інше"
+
+
+class Outlay(AbstractTimeStampModel):
+    uuid = models.UUIDField(
+        default=uuid.uuid4, 
+        primary_key=True, 
+        editable=False
+    )
+    type = models.CharField(
+        max_length=20,
+        choices=OutlayTypeChoice.choices,
+        default=OutlayTypeChoice.OTHER,
+        verbose_name="Тип витрати",
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=OutlayCategoryChoice.choices,
+        default=OutlayCategoryChoice.FUEL,
+        verbose_name='Підкатегорія',
+        null=True,
+        blank=True
+    )
+    category_name = models.CharField(
+        max_length=100,
+        verbose_name='Власна підкатегорія',
+        blank=True,
+        null=True,
+    )
+    service_name = models.CharField(
+        max_length=55,
+        verbose_name='Назва сервісу',
+        blank=True,
+        null=True
+    )
+    description = models.TextField(verbose_name='Опис')
+    amount = models.ForeignKey(
+        'OutlayAmount',
+        on_delete=models.PROTECT,
+        db_column='amount_id',
+    )
+
+    cars = models.ManyToManyField(
+        Car, 
+        related_name='outlay_cars'
+    )
+
+
+class OutlayAmount(models.Model):
+    uuid = models.UUIDField(
+        default=uuid.uuid4, 
+        primary_key=True, 
+        editable=False
+    )
+    price_per_item = models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Ціна за одиницю (PLN)', null=True, blank=True)
+    item_count = models.PositiveSmallIntegerField(verbose_name='Кількість', null=True, blank=True)
+    full_price = models.DecimalField(decimal_places=2, max_digits=10, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.full_price:
+            self.full_price = self.item_count * self.price_per_item
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f'{self.uuid}'
+
 
 class Invoice(AbstractTimeStampModel):
     uuid=models.UUIDField(

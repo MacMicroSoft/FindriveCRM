@@ -2,8 +2,13 @@ from django.urls import path
 from . import views as view
 
 urlpatterns = [
-    path("", view.DashboardView.as_view(), name="dashboard"),
-    path("cars/create/", view.AddCarView.as_view(), name="add_car_ajax"),
+    path('cars', view.DashboardView.as_view(), name='cars'),
+    path('outlay/', view.OutlayView.as_view(), name='outlay'),
+    path('outlay/<uuid:pk>/', view.OutlatDetailView.as_view(), name='outlay_detail'),
+    path('outlay/<uuid:pk>/delete', view.OutlayDeleteView.as_view(), name='outlay_delete'),
+
+
+
     # path("cars/<uuid:pk>/", view.CarDetailView.as_view(), name="car_detail"),
     # path("owner/create/", view.CreateOwnerView.as_view(), name="owner_create"),
     # path("cars/", view.CarListView.as_view(), name="car_list"),

@@ -23,7 +23,7 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path("__reload__/", include("django_browser_reload.urls")),
     path('core/', include("core.urls")),
-    path('', RedirectView.as_view(url='/core/', permanent=True)),
+    path('', RedirectView.as_view(url='/core/cars', permanent=True)),
     path('accounts/', include('allauth.urls')),
     path('admin/', admin.site.urls)
 ]

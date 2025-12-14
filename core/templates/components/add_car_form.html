@@ -8,7 +8,7 @@
         <button type="button" class="close-modal" id="closeModalBtn">&times;</button>
       </div>
 
-      <form method="POST" action="{% url 'add_car_ajax' %}">
+      <form method="POST" action="{% url 'cars' %}">
         {% csrf_token %}
         <div class="modal-body">
 
@@ -25,7 +25,7 @@
             {{ form.color }}
             {{ form.fuel_type }}
             {{ form.status }}
-            {{ form.driver_type }}
+            {{ form.drive_type }}
             {{ form.photo }}
             {{ form.owner }}
 
@@ -64,7 +64,7 @@
         const formData = new FormData(form);
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-        const response = await fetch("{% url 'add_car_ajax' %}", {
+        const response = await fetch("{% url 'cars' %}", {
             method: "POST",
             headers: {
                 "X-CSRFToken": csrfToken,
