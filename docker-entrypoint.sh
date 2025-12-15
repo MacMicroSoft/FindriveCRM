@@ -27,11 +27,19 @@ if ! python manage.py collectstatic --noinput; then
 fi
 
 echo "Starting Gunicorn..."
+# Calculate workers: (2 x CPU cores) + 1, but at least 2 and at most 4
+WORKERS=${GUNICORN_WORKERS:-3}
+TIMEOUT=${GUNICORN_TIMEOUT:-120}
+
 exec gunicorn findrive_crm.wsgi:application \
     --bind 0.0.0.0:8000 \
-    --workers 3 \
-    --timeout 120 \
+    --workers "$WORKERS" \
+    --timeout "$TIMEOUT" \
+    --keep-alive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
     --access-logfile - \
     --error-logfile - \
-    --log-level info
+    --log-level info \
+    --capture-output
 

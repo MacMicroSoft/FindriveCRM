@@ -40,7 +40,9 @@ except Exception:
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-DEBUG = os.getenv("DEBUG", "False")
+# Convert DEBUG to boolean (handle string "True"/"False" or "1"/"0")
+DEBUG_STR = os.getenv("DEBUG", "False").lower()
+DEBUG = DEBUG_STR in ("true", "1", "yes", "on")
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
