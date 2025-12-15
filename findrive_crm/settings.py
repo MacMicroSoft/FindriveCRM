@@ -85,6 +85,13 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
+AUTH_USER_MODEL = "core.User"
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_VERIFICATION = False
+
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 WSGI_APPLICATION = "findrive_crm.wsgi.application"
@@ -152,7 +159,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-AUTH_USER_MODEL = "core.User"
 
 # Logging configuration
 LOGGING = {

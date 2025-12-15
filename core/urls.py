@@ -2,7 +2,7 @@ from django.urls import path
 from . import views as view
 
 urlpatterns = [
-    path("", view.DashboardView.as_view(), name="dashboard"),
+    path("cars", view.DashboardView.as_view(), name="cars"),
     path("cars/create/", view.AddCarView.as_view(), name="add_car_ajax"),
     path("cars/<uuid:pk>/", view.CarDetailView.as_view(), name="car-detail"),
     path("cars/update/<uuid:pk>/", view.CarUpdateView.as_view(), name="car-update"),
@@ -17,4 +17,7 @@ urlpatterns = [
     path("services/update/<uuid:pk>/", view.ServiceUpdateView.as_view(), name="service-update"),
     path("services/delete/<uuid:pk>/", view.ServiceDeleteView.as_view(), name="service-delete"),
     path("services/<uuid:pk>/", view.ServiceDetailView.as_view(), name="service-detail"),
+    path("outlay/", view.OutlayView.as_view(), name="outlay"),
+    path("outlay/<uuid:pk>/", view.OutlatDetailView.as_view(), name="outlay_detail"),
+    path("outlay/<uuid:pk>/delete", view.OutlayDeleteView.as_view(), name="outlay_delete"),
 ]
