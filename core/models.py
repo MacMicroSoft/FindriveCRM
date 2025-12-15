@@ -6,188 +6,166 @@ import uuid
 class CustomUserManager(BaseUserManager):
     def create_user(self, username, email, password, **kwargs):
         if not email:
-            raise ValueError('Provide Email filed')
+            raise ValueError("Provide Email filed")
 
         email = self.normalize_email(email=email)
 
-        user = self.model(
-            username=username,
-            email=email,
-            **kwargs
-        )
+        user = self.model(username=username, email=email, **kwargs)
         user.set_password(password)
         user.save()
 
         return user
 
     def create_superuser(self, username, email, password, **kwargs):
-        kwargs.setdefault('is_staff', True)
-        kwargs.setdefault('is_superuser', True)
-        kwargs.setdefault('is_active', True)
+        kwargs.setdefault("is_staff", True)
+        kwargs.setdefault("is_superuser", True)
+        kwargs.setdefault("is_active", True)
 
         return self.create_user(username, email, password, **kwargs)
+
 
 class RolesChoice(models.TextChoices):
     CUSTOMER = "customer"
     ADMIN = "admin"
     MANAGER = "auto_manager"
-    FINANCE= "finance_manager"
+    FINANCE = "finance_manager"
+
 
 class AbstractTimeStampModel(models.Model):
-    created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        abstract=True
+        abstract = True
 
 
 class User(AbstractBaseUser, AbstractTimeStampModel, PermissionsMixin):
-    uuid = models.UUIDField(
-        default=uuid.uuid4, 
-        primary_key=True, 
-        editable=False
-    )
-    phone=models.CharField(max_length=20, blank=True, null=True)
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     role = models.CharField(
-        max_length=20,
-        choices=RolesChoice.choices,
-        default=RolesChoice.CUSTOMER
+        max_length=20, choices=RolesChoice.choices, default=RolesChoice.CUSTOMER
     )
     email = models.EmailField(blank=True, null=True, max_length=32, unique=True)
     username = models.CharField(max_length=32, unique=True)
-    is_email_verified=models.BooleanField(default=False)
-    is_blocked=models.BooleanField(default=False)
-    last_login_at=models.DateTimeField(null=True, blank=True)
+    is_email_verified = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
+    last_login_at = models.DateTimeField(null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["username"]
 
     objects = CustomUserManager()
-    
+
     def save(self, *args, **kwargs):
         # custom logic
         super().save(*args, **kwargs)
 
-
     def __str__(self):
         return self.username
-    
+
 
 class Owner(AbstractTimeStampModel):
-    uuid=models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    first_name=models.CharField(max_length=255)
-    last_name=models.CharField(max_length=255)
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, blank=True, null=True, unique=True)
-    telegram_link=models.CharField(max_length=255, unique=True)
-    email=models.CharField(max_length=55, unique=True)
-    is_active_telegram=models.BooleanField(default=False)
-    
+    telegram_link = models.CharField(max_length=255, unique=True)
+    email = models.CharField(max_length=55, unique=True)
+    is_active_telegram = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
-    
+
 
 class StatusChoice(models.TextChoices):
     ACTIVE = "Active"
     AWAIT = "Await"
     PROCESSING = "Processing"
     SERVICE = "Service"
-    
+
 
 class FuelTypeChoice(models.TextChoices):
     PETROL = "petrol", "Petrol"
     DIESEL = "diesel", "Diesel"
     ELECTRIC = "electric", "Electric"
     HYBRID = "hybrid", "Hybrid"
-    
+
 
 class Car(AbstractTimeStampModel):
-    uuid=models.UUIDField(
-        default=uuid.uuid4, 
-        primary_key=True, 
-        editable=False
-    )
-    mark=models.CharField(max_length=55)
-    model=models.CharField(max_length=55)
-    color=models.CharField(max_length=25)
-    year=models.IntegerField()
-    vin_code=models.CharField(max_length=55)
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    mark = models.CharField(max_length=55)
+    model = models.CharField(max_length=55)
+    color = models.CharField(max_length=25)
+    year = models.IntegerField()
+    vin_code = models.CharField(max_length=55)
     license_plate = models.CharField(max_length=8)
     fuel_type = models.CharField(
-        max_length=20,
-        choices=FuelTypeChoice.choices,
-        blank=True,
-        null=True
+        max_length=20, choices=FuelTypeChoice.choices, blank=True, null=True
     )
     status = models.CharField(
         max_length=20,
         choices=StatusChoice.choices,
         blank=True,
         null=True,
-        default=StatusChoice.ACTIVE
+        default=StatusChoice.ACTIVE,
     )
-    mileage=models.DecimalField(max_digits=10, decimal_places=1)
-    drive_type=models.CharField(max_length=55)
+    mileage = models.DecimalField(max_digits=10, decimal_places=1)
+    drive_type = models.CharField(max_length=55, blank=True, null=True)
     photo = models.ImageField(upload_to="car_photos/", blank=True, null=True)
-    
-    owner=models.ForeignKey(
-        Owner, 
-        on_delete=models.CASCADE, 
-        related_name="cars",
-        null=True,
-        blank=True
+    is_saved = models.BooleanField(default=False)
+    owner = models.ForeignKey(
+        Owner, on_delete=models.CASCADE, related_name="cars", null=True, blank=True
     )
 
     @property
     def total_expenses_amount(self):
-        service_total = sum(
-            item.total for item in self.car_expenses.all()
-        )
-        other_total = sum(
-            item.total_amount() for item in self.other_expenses.all()
-        )
+        service_total = sum(item.total for item in self.car_expenses.all())
+        other_total = sum(item.total_amount() for item in self.other_expenses.all())
         return service_total + other_total
-    
+
     def __str__(self):
         return f"{self.mark} {self.model} {self.year}"
 
+
+class CarPhoto(AbstractTimeStampModel):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name="photos")
+    photo = models.ImageField(upload_to="car_photos/")
+    order = models.IntegerField(default=0, help_text="Порядок відображення фото")
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return f"Photo for {self.car.mark} {self.car.model}"
+
+
 class Service(AbstractTimeStampModel):
-    uuid=models.UUIDField(
-        default=uuid.uuid4, 
-        primary_key=True, 
-        editable=False
-    )
-    name=models.CharField(max_length=55)
-    phone=models.CharField(max_length=20, blank=True, null=True)
-    location=models.CharField(max_length=255)
-    social_media=models.CharField(max_length=55, blank=True)
-    has_social_media=models.BooleanField(default=False)
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    name = models.CharField(max_length=55)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    location = models.CharField(max_length=255)
+    social_media = models.CharField(max_length=55, blank=True)
+    has_social_media = models.BooleanField(default=False)
 
     cars = models.ManyToManyField(
         Car,
         related_name="services",
-    )  
+    )
 
     def __str__(self):
         return f"{self.name}"
 
 
 class CarService(AbstractTimeStampModel):
-    car = models.ForeignKey(
-        Car,
-        on_delete=models.CASCADE,
-        related_name="car_expenses"
-    )
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name="car_expenses")
 
     service = models.ForeignKey(
-        Service,
-        on_delete=models.CASCADE,
-        related_name="car_services",
-        null=True,
-        blank=True
+        Service, on_delete=models.CASCADE, related_name="car_services", null=True, blank=True
     )
 
     name = models.CharField(max_length=55)
@@ -197,60 +175,54 @@ class CarService(AbstractTimeStampModel):
     @property
     def total(self):
         return self.count * self.price_per_one
-    
+
     def __str__(self):
         return f"{self.car} {self.name}"
 
 
 class Other(AbstractTimeStampModel):
-    uuid=models.UUIDField(
-        default=uuid.uuid4, 
-        primary_key=True, 
-        editable=False
-    )
-    name=models.CharField(max_length=55)
-    type=models.CharField(max_length=55)
-    count=models.IntegerField()
-    price_per_one=models.DecimalField(max_digits=10, decimal_places=2)
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    name = models.CharField(max_length=55)
+    type = models.CharField(max_length=55)
+    count = models.IntegerField()
+    price_per_one = models.DecimalField(max_digits=10, decimal_places=2)
 
-    car = models.ForeignKey(
-        Car,
-        on_delete=models.CASCADE,
-        related_name="other_expenses"
-    )
+    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name="other_expenses")
 
     def total_amount(self):
-        return self.count*self.price_per_one
+        return self.count * self.price_per_one
 
     def __str__(self):
         return f"{self.name} {self.type} {self.count}"
 
 
 class Comment(models.Model):
-    invoice = models.ForeignKey(
-        "Invoice",
-        on_delete=models.CASCADE,
-        related_name="comments"
-    )
+    invoice = models.ForeignKey("Invoice", on_delete=models.CASCADE, related_name="comments")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 # TODO: implement proper Invoice → InvoiceItem → CarExpense structure
 
-class Invoice(AbstractTimeStampModel):
-    uuid=models.UUIDField(
-        default=uuid.uuid4, 
-        primary_key=True, 
-        editable=False
-    )
-    name=models.CharField(max_length=55)
-    file_path=models.CharField(max_length=255)
-    invoice_data=models.JSONField(default=dict)
-    invoice_amount=models.DecimalField(max_digits=10, decimal_places=2)
-    is_archived=models.BooleanField(default=False)
 
-    cars=models.ManyToManyField(
-        Car, 
-        related_name="invoices"
-    )
+class Invoice(AbstractTimeStampModel):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    name = models.CharField(max_length=55)
+    file_path = models.CharField(max_length=255)
+    invoice_data = models.JSONField(default=dict)
+    invoice_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_archived = models.BooleanField(default=False)
+
+    cars = models.ManyToManyField(Car, related_name="invoices")
+
+
+class Notifications(AbstractTimeStampModel):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+
+    message = models.TextField()
+    message_type = models.CharField(max_length=55)
+    send_at = models.DateTimeField()
+    delivered_at = models.DateTimeField()
+
+    is_sended = models.BooleanField(default=False)

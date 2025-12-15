@@ -4,6 +4,9 @@ from . import views as view
 urlpatterns = [
     path("", view.DashboardView.as_view(), name="dashboard"),
     path("cars/create/", view.AddCarView.as_view(), name="add_car_ajax"),
+    path("cars/<uuid:pk>/", view.CarDetailView.as_view(), name="car-detail"),
+    path("cars/update/<uuid:pk>/", view.CarUpdateView.as_view(), name="car-update"),
+    path("cars/delete/<uuid:pk>/", view.CarDeleteView.as_view(), name="car-delete"),
     path("owners/", view.OwnerListView.as_view(), name="owner-list"),
     path("owners/<uuid:pk>/", view.OwnerDetailView.as_view(), name="owner-detail"),
     path("owners/create/", view.OwnerCreateView.as_view(), name="owner-create"),
@@ -13,5 +16,5 @@ urlpatterns = [
     path("services/create/", view.ServiceCreateView.as_view(), name="service-create"),
     path("services/update/<uuid:pk>/", view.ServiceUpdateView.as_view(), name="service-update"),
     path("services/delete/<uuid:pk>/", view.ServiceDeleteView.as_view(), name="service-delete"),
-    path("services/<uuid:pk>/", view.ServiceDetailView.as_view(), name="service-detail")
+    path("services/<uuid:pk>/", view.ServiceDetailView.as_view(), name="service-detail"),
 ]

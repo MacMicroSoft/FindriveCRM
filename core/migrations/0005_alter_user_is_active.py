@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0004_user_is_superuser'),
+        ("core", "0004_user_is_superuser"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='user',
-            name='is_active',
+            model_name="user",
+            name="is_active",
             field=models.BooleanField(default=True),
         ),
     ]

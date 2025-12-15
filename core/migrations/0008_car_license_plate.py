@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0007_user_groups_user_user_permissions'),
+        ("core", "0007_user_groups_user_user_permissions"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='car',
-            name='license_plate',
+            model_name="car",
+            name="license_plate",
             field=models.CharField(default=1, max_length=8),
             preserve_default=False,
         ),

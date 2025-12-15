@@ -1,29 +1,168 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Services</title>
-</head>
-<body>
+{% extends 'index.html' %}
+{% load static %}
 
-<h1>Services list</h1>
+{% block title %}Сервіси{% endblock %}
 
-<a href="{% url 'service-create' %}">Create service</a>
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <div>
+            <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <svg style="width: 1.5rem; height: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Сервіси
+            </h1>
+            <p style="font-size: 0.875rem; color: #4b5563; margin-left: 2rem;">Список СТО та автосервісів</p>
+        </div>
+        <button type="button" id="openServiceModalBtn" style="background: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">
+            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span class="hidden-mobile">Додати сервіс</span>
+        </button>
+    </div>
+    
+    <div style="position: relative;">
+        <svg style="width: 1.25rem; height: 1.25rem; position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input type="text" id="serviceSearch" placeholder="Пошук за назвою, адресою або телефоном..." style="width: 100%; padding: 0.5rem 0.75rem 0.5rem 2.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#2563eb'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'" onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+    </div>
+    
+    <style>
+        .hidden-mobile { display: inline; }
+        @media (max-width: 767px) {
+            .hidden-mobile { display: none; }
+        }
+    </style>
+{% endblock %}
 
-<ul>
-    {% for service in object_list %}
-        <li>
-            {{ service.name }}
-            |
-            <a href="{% url 'service-detail' service.pk %}">View</a>
-            |
-            <a href="{% url 'service-update' service.pk %}">Edit</a>
-            |
-            <a href="{% url 'service-delete' service.pk %}">Delete</a>
-        </li>
-    {% empty %}
-        <li>No services found.</li>
-    {% endfor %}
-</ul>
+{% block content %}
+    <style>
+        .service-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .service-card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .icon {
+            width: 1rem;
+            height: 1rem;
+            display: inline-block;
+        }
+        .badge {
+            background: #dbeafe;
+            color: #1e40af;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+    </style>
 
-</body>
-</html>
+    <div>
+        {% if object_list %}
+            <div id="serviceList">
+                {% for service in object_list %}
+                    <div class="service-card" data-search="{{ service.name }} {{ service.location }} {{ service.phone|default:'' }}" onclick="window.location.href='{% url 'service-detail' service.pk %}'">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg class="icon" style="color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <h3 style="color: #111827; font-weight: 500;">{{ service.name }}</h3>
+                            </div>
+                            {% if service.cars.count > 0 %}
+                                <span class="badge">
+                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    {{ service.cars.count }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; color: #4b5563;">
+                                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span>{{ service.location }}</span>
+                            </div>
+                            {% if service.phone %}
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #4b5563;">
+                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                    </svg>
+                                    <span>{{ service.phone }}</span>
+                                </div>
+                            {% endif %}
+                            {% if service.has_social_media and service.social_media %}
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: #4b5563;">
+                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-5.656-3.555a4 4 0 003.888-1.155 4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                                    </svg>
+                                    <span>{{ service.social_media }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #f3f4f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <p style="font-size: 0.75rem; color: #6b7280;">
+                                    Додано: {{ service.created_at|date:"d.m.Y" }}
+                                </p>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'service-detail' service.pk %}" style="color: #2563eb; font-size: 0.875rem; text-decoration: none;" onclick="event.stopPropagation();">Переглянути</a>
+                                    <span style="color: #d1d5db;">|</span>
+                                    <button onclick="event.stopPropagation(); openEditServiceModal('{{ service.pk }}')" style="color: #2563eb; font-size: 0.875rem; background: none; border: none; cursor: pointer; padding: 0;">Редагувати</button>
+                                    <span style="color: #d1d5db;">|</span>
+                                    <button onclick="event.stopPropagation(); openDeleteServiceModal('{{ service.pk }}', '{{ service.name }}')" style="color: #dc2626; font-size: 0.875rem; background: none; border: none; cursor: pointer; padding: 0;">Видалити</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem 0; color: #6b7280;">
+                <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.75rem; opacity: 0.3;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <p>Немає сервісів</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% include 'components/add_service_form.html' %}
+    {% include 'components/edit_service_form.html' %}
+    {% include 'components/delete_service_modal.html' %}
+
+    <script>
+        document.getElementById('serviceSearch')?.addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.service-card');
+            
+            cards.forEach(card => {
+                const searchText = card.getAttribute('data-search').toLowerCase();
+                if (searchText.includes(query)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    </script>
+{% endblock %}

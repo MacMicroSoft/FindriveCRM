@@ -1,1 +1,1 @@
-label_vin="Введіть vin код авто"
+label_vin = "Введіть vin код авто"

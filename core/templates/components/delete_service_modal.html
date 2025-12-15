@@ -1,0 +1,172 @@
+{% load static %}
+
+<style>
+    .custom-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(2px);
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        padding: 1rem;
+        overflow-y: auto;
+    }
+    .custom-modal-content {
+        background: #fff;
+        width: 100%;
+        max-width: 400px;
+        max-height: 90vh;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+        animation: modalShow 0.25s ease-out;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        margin: auto;
+        position: relative;
+    }
+    @media (max-width: 768px) {
+        .custom-modal {
+            padding: 0.5rem;
+            align-items: flex-start;
+        }
+        .custom-modal-content {
+            max-width: 100%;
+            max-height: 100vh;
+            border-radius: 0;
+            padding: 1rem;
+        }
+    }
+    @keyframes modalShow {
+        from { opacity: 0; transform: translateY(-20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: none;
+        margin-bottom: 1rem;
+        flex-shrink: 0;
+    }
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+    }
+    .close-modal {
+        font-size: 26px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        color: #6b7280;
+    }
+    .close-modal:hover {
+        color: #111827;
+    }
+    .modal-footer {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+        flex-shrink: 0;
+    }
+</style>
+
+<div id="deleteServiceModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Видалити сервіс</h5>
+            <button type="button" class="close-modal" id="closeDeleteServiceModalBtn">&times;</button>
+        </div>
+
+        <div style="padding: 20px; text-align: center;">
+            <svg style="width: 3rem; height: 3rem; margin: 0 auto 1rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <p style="margin-bottom: 1rem; color: #6b7280;">Ви впевнені, що хочете видалити цей сервіс?</p>
+            <p id="deleteServiceName" style="font-weight: 500; margin-bottom: 1.5rem;"></p>
+        </div>
+
+        <form method="POST" id="deleteServiceForm" style="margin: 0;">
+            {% csrf_token %}
+            <div class="modal-footer" style="justify-content: center; gap: 0.75rem;">
+                <button type="button" class="btn-cancel" id="cancelDeleteServiceBtn" style="background: #f3f4f6; color: #374151; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
+                    Скасувати
+                </button>
+                <button type="submit" class="btn-delete" style="background: #dc2626; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
+                    Видалити
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openDeleteServiceModal(serviceId, serviceName) {
+        const deleteModal = document.getElementById("deleteServiceModal");
+        const deleteForm = document.getElementById("deleteServiceForm");
+        const deleteName = document.getElementById("deleteServiceName");
+        
+        deleteName.textContent = serviceName;
+        deleteForm.action = `/core/services/delete/${serviceId}/`;
+        deleteModal.style.display = "flex";
+    }
+
+    const deleteServiceModal = document.getElementById("deleteServiceModal");
+    const closeDeleteServiceBtn = document.getElementById("closeDeleteServiceModalBtn");
+    const cancelDeleteServiceBtn = document.getElementById("cancelDeleteServiceBtn");
+
+    if (closeDeleteServiceBtn) {
+        closeDeleteServiceBtn.addEventListener("click", () => {
+            deleteServiceModal.style.display = "none";
+        });
+    }
+
+    if (cancelDeleteServiceBtn) {
+        cancelDeleteServiceBtn.addEventListener("click", () => {
+            deleteServiceModal.style.display = "none";
+        });
+    }
+
+    if (deleteServiceModal) {
+        deleteServiceModal.addEventListener("click", (e) => {
+            if (e.target === deleteServiceModal) {
+                deleteServiceModal.style.display = "none";
+            }
+        });
+    }
+
+    const deleteServiceForm = document.getElementById("deleteServiceForm");
+    if (deleteServiceForm) {
+        deleteServiceForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(deleteServiceForm);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const serviceId = deleteServiceForm.action.match(/services\/delete\/([^\/]+)\//)[1];
+
+            const response = await fetch(`/core/services/delete/${serviceId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === "ok") {
+                deleteServiceModal.style.display = "none";
+                window.location.reload();
+            } else {
+                console.log("Помилка:", data.errors);
+                alert("Помилка: " + JSON.stringify(data.errors));
+            }
+        });
+    }
+</script>
+

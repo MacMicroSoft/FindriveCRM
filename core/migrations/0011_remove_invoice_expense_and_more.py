@@ -4,46 +4,57 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0010_rename_statuse_car_status'),
+        ("core", "0010_rename_statuse_car_status"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='invoice',
-            name='expense',
+            model_name="invoice",
+            name="expense",
         ),
-        migrations.RemoveField(
-            model_name='service',
-            name='is_social_media',
+        # Додаємо has_social_media тільки якщо воно не існує
+        migrations.RunSQL(
+            sql="ALTER TABLE core_service ADD COLUMN IF NOT EXISTS has_social_media BOOLEAN DEFAULT FALSE;",
+            reverse_sql="ALTER TABLE core_service DROP COLUMN IF EXISTS has_social_media;",
         ),
-        migrations.AddField(
-            model_name='service',
-            name='has_social_media',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AlterField(
-            model_name='car',
-            name='status',
-            field=models.CharField(blank=True, choices=[('Active', 'Active'), ('Await', 'Await'), ('Processing', 'Processing'), ('Service', 'Service')], default='Active', max_length=20, null=True),
+        # Видаляємо is_social_media тільки якщо воно існує
+        migrations.RunSQL(
+            sql="ALTER TABLE core_service DROP COLUMN IF EXISTS is_social_media;",
+            reverse_sql=migrations.RunSQL.noop,
         ),
         migrations.AlterField(
-            model_name='owner',
-            name='email',
+            model_name="car",
+            name="status",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("Active", "Active"),
+                    ("Await", "Await"),
+                    ("Processing", "Processing"),
+                    ("Service", "Service"),
+                ],
+                default="Active",
+                max_length=20,
+                null=True,
+            ),
+        ),
+        migrations.AlterField(
+            model_name="owner",
+            name="email",
             field=models.CharField(max_length=55, unique=True),
         ),
         migrations.AlterField(
-            model_name='owner',
-            name='phone',
+            model_name="owner",
+            name="phone",
             field=models.CharField(blank=True, max_length=20, null=True, unique=True),
         ),
         migrations.AlterField(
-            model_name='owner',
-            name='telegram_link',
+            model_name="owner",
+            name="telegram_link",
             field=models.CharField(max_length=255, unique=True),
         ),
         migrations.DeleteModel(
-            name='CarExpense',
+            name="CarExpense",
         ),
     ]

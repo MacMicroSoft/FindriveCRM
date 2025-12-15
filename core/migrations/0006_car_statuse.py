@@ -4,15 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0005_alter_user_is_active'),
+        ("core", "0005_alter_user_is_active"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='car',
-            name='statuse',
-            field=models.CharField(blank=True, choices=[('Active', 'Active'), ('Await', 'Awaite'), ('Processing', 'Processing'), ('Service', 'Service')], max_length=20, null=True),
+            model_name="car",
+            name="statuse",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("Active", "Active"),
+                    ("Await", "Awaite"),
+                    ("Processing", "Processing"),
+                    ("Service", "Service"),
+                ],
+                max_length=20,
+                null=True,
+            ),
         ),
     ]
