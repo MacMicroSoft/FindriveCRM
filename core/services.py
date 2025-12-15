@@ -18,8 +18,6 @@ def get_owners_choice() -> list[tuple]:
 
     return [(o["uuid"], o["full_name"]) for o in owners]
 
-<<<<<<< HEAD
-
 def create_car_with_photos(
     form_data: dict[str, Any],
     files: dict[str, Any],
@@ -385,8 +383,8 @@ def get_car_param_to_view(car: Car) -> dict:
 
 def create_outlay(
     type: str,
-    description: str,
-    cars: list[Car],
+    name: str,
+    car: Car,  # Changed from cars: list[Car] to car: Car
     price_per_item: float, 
     item_count: int,
     created_at,
@@ -394,6 +392,8 @@ def create_outlay(
     category: str = None,
     category_name: str = None,
     service_name: str = None,
+    comment: str = None,
+    description: str = None,  # For backward compatibility
 ) -> Outlay:
     if full_price:
         outlay_amout_obj: OutlayAmount = OutlayAmount.objects.create(
@@ -405,16 +405,26 @@ def create_outlay(
             item_count=item_count
         )
 
+    # For service type, don't set category (it should be None)
+    # For other type, set category if provided
+    final_category = None
+    if type == 'service':
+        final_category = None  # Service type doesn't have category
+    else:
+        final_category = category if category else None
+    
     outlay_obj: Outlay = Outlay.objects.create(
-        type=OutlayTypeChoice(type).label,
-        category=OutlayCategoryChoice(category).label,
-        category_name=category_name,
+        type=type,
+        category=final_category,
+        category_name=category_name if type != 'service' else None,
         service_name=service_name,
-        description=description,
+        name=name,
+        comment=comment,
+        description=description,  # For backward compatibility
         amount=outlay_amout_obj,
         created_at=created_at
     )
-    outlay_obj.cars.set(cars)
+    outlay_obj.cars.set([car])  # Set single car as list
 
     return outlay_obj
 
@@ -422,7 +432,7 @@ def create_outlay(
 def get_outlays() -> list[dict]:
     return Outlay.objects.select_related("outlay_cars", "amount").values(
         "cars__mark", "cars__model", "cars__license_plate",
-        "uuid", "category", "category_name", "description", "created_at", "updated_at",
+        "uuid", "category", "category_name", "name", "comment", "description", "created_at", "updated_at",
         "amount__price_per_item", "amount__item_count", "amount__full_price",
     )
 
@@ -430,13 +440,17 @@ def get_outlays() -> list[dict]:
 def get_outlay_form_data(uuid):
     outlay: Outlay = Outlay.objects.get(uuid=uuid)
     amount: OutlayAmount = outlay.amount
+    # Get first car (since now it's single car per outlay)
+    car = outlay.cars.first()
     form = OutlayFrom(initial={
-        "car": outlay.cars.all(),
+        "car": car,  # Single car instead of list
         "service_type": outlay.type,
         "category": outlay.category,
         "category_name": outlay.category_name,
         "service_name": outlay.service_name,
-        "description": outlay.description,
+        "name": outlay.name or (outlay.description[:255] if outlay.description else ""),
+        "comment": outlay.comment,
+        "description": outlay.description,  # For backward compatibility
         "date": outlay.created_at if not outlay.updated_at else outlay.updated_at,
         "price_type": "full" if amount.full_price else "part",
         "full_price": amount.full_price,
@@ -458,10 +472,20 @@ def update_outlay(uuid, form: OutlayFrom) -> Outlay:
 
     with transaction.atomic():
         outlay.type = cd["service_type"]
-        outlay.category = cd.get("category")
-        outlay.category_name = cd.get("category_name")
+        
+        # For service type, don't set category (it should be None)
+        # For other type, set category if provided
+        if cd["service_type"] == 'service':
+            outlay.category = None
+            outlay.category_name = None
+        else:
+            outlay.category = cd.get("category")
+            outlay.category_name = cd.get("category_name")
+        
         outlay.service_name = cd.get("service_name")
-        outlay.description = cd["description"]
+        outlay.name = cd.get("name", "")
+        outlay.comment = cd.get("comment")
+        outlay.description = cd.get("description")  # For backward compatibility
         outlay.created_at = cd["date"]
         outlay.save()
 
@@ -479,18 +503,30 @@ def update_outlay(uuid, form: OutlayFrom) -> Outlay:
 
         amount.save()
 
-        outlay.cars.set(cd["car"])
+        outlay.cars.set([cd["car"]])  # Set single car as list
 
     return outlay
 
 
-import pdfplumber
-import re 
-import tabula
-import pandas as pd
-
-
 def pdf_parser(filepath) -> dict:
+    """
+    Parse PDF invoice file.
+    
+    Note: Requires pdfplumber, tabula-py, and pandas packages.
+    These are optional dependencies and should be installed separately.
+    """
+    try:
+        import pdfplumber
+        import re 
+        import tabula
+        import pandas as pd
+    except ImportError as e:
+        raise ImportError(
+            f"PDF parsing requires additional packages: pdfplumber, tabula-py, pandas. "
+            f"Install them with: poetry add pdfplumber tabula-py pandas. "
+            f"Original error: {e}"
+        )
+    
     TABLE_FIELDS = ("id", "item_name", "amount", "price_netto", "price_netto2", "tax_percent", "tax_price", "price_brutto")
 
     tables = tabula.read_pdf(filepath, pages="1", lattice=True)
@@ -516,7 +552,7 @@ def pdf_parser(filepath) -> dict:
 
     str_data = {}
 
-    with pdfplumber.open("test.pdf") as pdf:
+    with pdfplumber.open(filepath) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
             if not text:

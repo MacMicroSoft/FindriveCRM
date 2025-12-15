@@ -155,11 +155,11 @@ class ServiceForm(forms.ModelForm):
 
 
 class OutlayFrom(forms.Form):
-    car = forms.ModelMultipleChoiceField(
+    car = forms.ModelChoiceField(
         queryset=Car.objects.all(),
         required=True,
         label='Автомобіль',
-        widget=forms.SelectMultiple(attrs={
+        widget=forms.Select(attrs={
             "class": "border_input w-full",
             "placeholder": "Оберіть автомобіль"
         })
@@ -167,7 +167,7 @@ class OutlayFrom(forms.Form):
     service_type = forms.ChoiceField(
         required=True,
         label="Тип витрати",
-        choices=[('other', 'Other'), ('service', 'Service')],
+        choices=[('other', 'Інші'), ('service', 'Сервіс')],
         widget=forms.RadioSelect(attrs={"class": "service-radio"}),
         initial='other',
     )
@@ -198,11 +198,28 @@ class OutlayFrom(forms.Form):
             attrs={"placeholder": "Введіть назву сервісу вручну"}
         )
     )
-    description = forms.CharField(
-        required=True,
-        label='Опис',
+    name = forms.CharField(
+        required=False,
+        label='Назва витрати',
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"placeholder": "Наприклад: Заправка палива, Ремонт гальм тощо"}
+        )
+    )
+    comment = forms.CharField(
+        required=False,
+        label='Коментар',
         widget=forms.Textarea(attrs=
-            {"placeholder": "Детальний опис витрати",
+            {"placeholder": "Додаткова інформація про витрату (необов'язково)",
+            "class": "border_input w-full",
+            "rows": 3
+        }),
+    )
+    description = forms.CharField(
+        required=False,
+        label='Опис (застаріле)',
+        widget=forms.Textarea(attrs=
+            {"placeholder": "Не використовуйте це поле",
             "class": "border_input w-full"
         }),
     )

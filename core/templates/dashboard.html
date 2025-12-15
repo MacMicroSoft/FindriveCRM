@@ -81,8 +81,6 @@
         }
         .status-active { background: #d1fae5; color: #065f46; }
         .status-await { background: #fef3c7; color: #92400e; }
-        .status-processing { background: #dbeafe; color: #1e40af; }
-        .status-service { background: #fed7aa; color: #9a3412; }
         .tab-btn {
             flex: 1;
             padding: 0.5rem 1rem;
@@ -100,6 +98,24 @@
         .tab-btn:hover:not(.active) {
             background: #e5e7eb;
         }
+        @media (max-width: 640px) {
+            .vehicle-card {
+                padding: 0.875rem !important;
+            }
+            .tab-btn {
+                font-size: 0.8125rem !important;
+                padding: 0.5rem 0.75rem !important;
+            }
+        }
+        @media (max-width: 480px) {
+            .vehicle-card {
+                padding: 0.75rem !important;
+            }
+            .status-badge {
+                font-size: 0.6875rem !important;
+                padding: 0.1875rem 0.375rem !important;
+            }
+        }
         .tab-content {
             display: none;
         }
@@ -111,7 +127,7 @@
     <div>
         <!-- Активні авто -->
         <div id="activeTab" class="tab-content active">
-            {% if cars_active.exists or cars_active|length > 0 %}
+            {% if cars_active %}
                 <div id="activeVehiclesList">
                     {% for car in cars_active %}
                         <div class="vehicle-card" 
@@ -122,11 +138,9 @@
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                                         <span style="color: #111827; font-weight: 500;">{{ car.mark }} {{ car.model }}</span>
                                         <span class="status-badge status-{{ car.status|lower }}">
-                                            {% if car.status == "Active" %}Активне
-                                            {% elif car.status == "Await" %}Очікує
-                                            {% elif car.status == "Processing" %}В Обробці
-                                            {% elif car.status == "Service" %}Ремонт
-                                            {% else %}{{ car.status }}
+                                            {% if car.status == "Active" %}Активне авто
+                                            {% elif car.status == "Await" %}Очікуюче авто
+                                            {% else %}{{ car.get_status_display|default:car.status }}
                                             {% endif %}
                                         </span>
                                     </div>
@@ -179,7 +193,7 @@
 
         <!-- Очікуючі авто -->
         <div id="pendingTab" class="tab-content">
-            {% if cars_pending.exists or cars_pending|length > 0 %}
+            {% if cars_pending %}
                 <div id="pendingVehiclesList">
                     {% for car in cars_pending %}
                         <div class="vehicle-card" 
@@ -190,11 +204,9 @@
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                                         <span style="color: #111827; font-weight: 500;">{{ car.mark }} {{ car.model }}</span>
                                         <span class="status-badge status-{{ car.status|lower }}">
-                                            {% if car.status == "Active" %}Активне
-                                            {% elif car.status == "Await" %}Очікує
-                                            {% elif car.status == "Processing" %}В Обробці
-                                            {% elif car.status == "Service" %}Ремонт
-                                            {% else %}{{ car.status }}
+                                            {% if car.status == "Active" %}Активне авто
+                                            {% elif car.status == "Await" %}Очікуюче авто
+                                            {% else %}{{ car.get_status_display|default:car.status }}
                                             {% endif %}
                                         </span>
                                     </div>

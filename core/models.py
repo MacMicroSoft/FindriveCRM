@@ -85,28 +85,28 @@ class Owner(AbstractTimeStampModel, AbstractUserField):
     telegram_link=models.CharField(max_length=255, verbose_name="Посилання на телеграм")
     is_active_telegram=models.BooleanField(default=False, verbose_name="Активований телеграм")
 
+    class Meta:
+        ordering = ['last_name', 'first_name', '-created_at']
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
     
 
 class CarStatusChoice(models.TextChoices):
-    ACTIVE = "Active"
-    AWAIT = "Await"
-    PROCESSING = "Processing"
-    SERVICE = "Service"
+    ACTIVE = "Active", "Активне авто"
+    AWAIT = "Await", "Очікуюче авто"
 
 
 class CarFuelTypeChoice(models.TextChoices):
-    PETROL = "petrol", "Petrol"
-    DIESEL = "diesel", "Diesel"
-    ELECTRIC = "electric", "Electric"
-    HYBRID = "hybrid", "Hybrid"
+    PETROL = "petrol", "Бензин"
+    DIESEL = "diesel", "Дизель"
+    ELECTRIC = "electric", "Електричний"
+    HYBRID = "hybrid", "Гібридний"
 
 class CarDriveTypeChoice(models.TextChoices):
     FWD = "FWD", "Передній"
     RWD = "RWD", "Задній"
-    AWD = "AWD", "Повний (AWD)"
-    WD4 = "4WD", "Повний (4WD)"
+    AWD = "AWD", "Повний"
 
 
 class Car(AbstractTimeStampModel):
@@ -191,6 +191,9 @@ class Service(AbstractTimeStampModel):
         related_name="services",
     )
 
+    class Meta:
+        ordering = ['name', '-created_at']
+
     def __str__(self):
         return f"{self.name}"
 
@@ -266,7 +269,7 @@ class Outlay(AbstractTimeStampModel):
     category = models.CharField(
         max_length=20,
         choices=OutlayCategoryChoice.choices,
-        default=OutlayCategoryChoice.FUEL,
+        default=None,
         verbose_name="Підкатегорія",
         null=True,
         blank=True
@@ -283,7 +286,26 @@ class Outlay(AbstractTimeStampModel):
         blank=True,
         null=True
     )
-    description = models.TextField(verbose_name="Опис")
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Назва витрати",
+        help_text="Коротка назва витрати для швидкої ідентифікації (обов'язково для сервісу)",
+        blank=True,
+        null=True,
+        default=""
+    )
+    comment = models.TextField(
+        verbose_name="Коментар",
+        blank=True,
+        null=True,
+        help_text="Додаткова інформація про витрату"
+    )
+    description = models.TextField(
+        verbose_name="Опис",
+        blank=True,
+        null=True,
+        help_text="Залишено для сумісності, використовуйте 'Назва витрати' та 'Коментар'"
+    )
     amount = models.ForeignKey(
         "OutlayAmount",
         on_delete=models.PROTECT,
