@@ -50,16 +50,30 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - static_volume:/static:ro
       - media_volume:/media:ro
+      - certbot_data:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
     depends_on:
       - web
     networks:
       - findrive_network
     restart: unless-stopped
 
+  certbot:
+    image: certbot/certbot:latest
+    container_name: findrive_certbot
+    volumes:
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - findrive_network
+    restart: "no"
+
 volumes:
   postgres_data:
   static_volume:
   media_volume:
+  certbot_data:
+  certbot_www:
 
 networks:
   findrive_network:

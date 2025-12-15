@@ -109,7 +109,7 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_VERIFICATION = False
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 
 WSGI_APPLICATION = "findrive_crm.wsgi.application"
 
@@ -182,10 +182,13 @@ USE_TZ = True
 
 AUTH_USER_MODEL = "core.User"
 
-SIGNUP_REDIRECT_URL = "http://127.0.0.1:8000/accounts/login/"
+# Redirect URLs
+LOGIN_REDIRECT_URL = "/core/cars"
+ACCOUNT_SIGNUP_REDIRECT_URL = "/core/cars"
+ACCOUNT_LOGOUT_REDIRECT_URL = "/accounts/login/"
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-LOGIN_REDIRECT_URL = "/core/cars"
 
 STATIC_URL = "/static/"
 
@@ -200,8 +203,13 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Security settings for production
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "False").lower() in ("true", "1", "yes")
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Only set secure cookies if using HTTPS
+    if SECURE_SSL_REDIRECT:
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+    else:
+        SESSION_COOKIE_SECURE = False
+        CSRF_COOKIE_SECURE = False
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
