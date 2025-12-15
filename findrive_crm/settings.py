@@ -115,14 +115,38 @@ WSGI_APPLICATION = "findrive_crm.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Get database configuration from environment variables
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_PORT = os.getenv("DB_PORT", "5432")
+
+# Validate required database settings
+if not DB_NAME:
+    raise ValueError("DB_NAME environment variable is not set!")
+if not DB_USER:
+    raise ValueError("DB_USER environment variable is not set!")
+if not DB_PASSWORD:
+    raise ValueError("DB_PASSWORD environment variable is not set!")
+
+# Warn if DB_NAME looks like a username (common mistake)
+if DB_NAME == DB_USER:
+    import warnings
+    warnings.warn(
+        f"DB_NAME ({DB_NAME}) should be different from DB_USER ({DB_USER}). "
+        f"DB_NAME should be the database name, DB_USER should be the username.",
+        UserWarning
+    )
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
     }
 }
 
