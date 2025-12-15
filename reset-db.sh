@@ -33,7 +33,17 @@ if [ ! -f findrive_crm/.env ]; then
 fi
 
 echo ""
-echo "Step 4: Checking .env file format..."
+echo "Step 4: Syncing .env file to project root for docker-compose..."
+if [ -f sync-env.sh ]; then
+    chmod +x sync-env.sh
+    ./sync-env.sh
+else
+    echo "Copying findrive_crm/.env to .env in project root..."
+    cp findrive_crm/.env .env
+fi
+
+echo ""
+echo "Step 5: Checking .env file format..."
 if grep -E "^[^#].*#.*" findrive_crm/.env > /dev/null 2>&1; then
     echo "WARNING: Found inline comments in .env file!"
     echo "Removing inline comments..."
@@ -41,15 +51,15 @@ if grep -E "^[^#].*#.*" findrive_crm/.env > /dev/null 2>&1; then
 fi
 
 echo ""
-echo "Step 5: Starting containers..."
+echo "Step 6: Starting containers..."
 docker-compose up -d --build
 
 echo ""
-echo "Step 6: Waiting for database to be ready..."
+echo "Step 7: Waiting for database to be ready..."
 sleep 5
 
 echo ""
-echo "Step 7: Checking container status..."
+echo "Step 8: Checking container status..."
 docker-compose ps
 
 echo ""
