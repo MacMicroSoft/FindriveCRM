@@ -28,3 +28,4 @@ echo "---"
 cat .env
 echo "---"
 
+

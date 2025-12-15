@@ -9,6 +9,7 @@ __pycache__
 dist
 build
 .env
+!findrive_crm/.env
 .venv
 venv/
 env/

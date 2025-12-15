@@ -13,22 +13,34 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
-
-
-load_dotenv()
+import warnings
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env file from findrive_crm directory
+env_path = BASE_DIR / 'findrive_crm' / '.env'
+# Suppress python-dotenv warnings about parsing errors
+warnings.filterwarnings("ignore", message=".*python-dotenv.*")
+
+# Load environment variables, ignoring parsing errors
+try:
+    load_dotenv(dotenv_path=env_path, verbose=False)
+except Exception:
+    # If .env file has issues, try loading from project root as fallback
+    try:
+        load_dotenv(verbose=False)
+    except Exception:
+        pass
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+DEBUG = os.getenv("DEBUG", "False")
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
