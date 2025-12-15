@@ -34,7 +34,6 @@ def handle_options(request):
     return response
 
 urlpatterns = [
-    path("__reload__/", include("django_browser_reload.urls")),
     path("core/", include("core.urls")),
     path("", RedirectView.as_view(url="/core/cars", permanent=True)),
     path("accounts/", include("allauth.urls")),
@@ -42,6 +41,10 @@ urlpatterns = [
     # Handle OPTIONS requests for API endpoints that don't exist (from extensions)
     path("api/v1/users/refresh/", handle_options, name="api-options-handler"),
 ]
+
+# Only include django-browser-reload URLs in DEBUG mode
+if settings.DEBUG:
+    urlpatterns.insert(0, path("__reload__/", include("django_browser_reload.urls")))
 
 if settings.DEBUG:
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns

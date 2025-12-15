@@ -214,6 +214,10 @@ if not DEBUG:
     INSTALLED_APPS.insert(INSTALLED_APPS.index("django.contrib.staticfiles") + 1, "whitenoise.runserver_nostatic")
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
     STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    
+    # WhiteNoise cache settings
+    # Versioned files (with hash) are cached for 1 year, others for 1 hour
+    WHITENOISE_MAX_AGE = 3600  # 1 hour for non-versioned files
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
