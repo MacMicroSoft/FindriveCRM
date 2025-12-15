@@ -23,7 +23,7 @@ services:
   web:
     build: .
     container_name: findrive_web
-    command: /app/docker-entrypoint.sh
+    command: sh /app/docker-entrypoint.sh
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
