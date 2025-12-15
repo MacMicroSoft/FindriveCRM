@@ -22,17 +22,18 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Copy entrypoint script first and set permissions
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Copy project
 COPY . /app/
 
 # Create directories for static files and media
 RUN mkdir -p /app/staticfiles /app/media
 
-# Collect static files (will be run again in entrypoint, but this helps with caching)
-# RUN python manage.py collectstatic --noinput || true
-
-# Create entrypoint script
-RUN chmod +x /app/docker-entrypoint.sh || true
+# Ensure entrypoint script has execute permissions (in case it was overwritten)
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Expose port
 EXPOSE 8000

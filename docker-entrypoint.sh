@@ -2,16 +2,29 @@
 set -e
 
 echo "Waiting for PostgreSQL..."
+max_attempts=60
+attempt=0
 while ! nc -z db 5432; do
-  sleep 0.1
+  attempt=$((attempt + 1))
+  if [ $attempt -ge $max_attempts ]; then
+    echo "ERROR: PostgreSQL is not available after $max_attempts attempts"
+    exit 1
+  fi
+  echo "Waiting for PostgreSQL... (attempt $attempt/$max_attempts)"
+  sleep 1
 done
-echo "PostgreSQL started"
+echo "PostgreSQL is ready!"
 
 echo "Running migrations..."
-python manage.py migrate --noinput
+if ! python manage.py migrate --noinput; then
+    echo "ERROR: Migrations failed!"
+    exit 1
+fi
 
 echo "Collecting static files..."
-python manage.py collectstatic --noinput
+if ! python manage.py collectstatic --noinput; then
+    echo "WARNING: collectstatic failed, but continuing..."
+fi
 
 echo "Starting Gunicorn..."
 exec gunicorn findrive_crm.wsgi:application \
