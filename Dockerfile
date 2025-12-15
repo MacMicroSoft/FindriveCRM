@@ -32,8 +32,8 @@ COPY . /app/
 # Create directories for static files and media
 RUN mkdir -p /app/staticfiles /app/media
 
-# Ensure entrypoint script has execute permissions (in case it was overwritten)
-RUN chmod +x /app/docker-entrypoint.sh
+# Ensure entrypoint script has execute permissions (in case it was overwritten by COPY)
+RUN chmod +x /app/docker-entrypoint.sh || true
 
 # Expose port
 EXPOSE 8000
