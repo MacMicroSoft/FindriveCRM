@@ -3,6 +3,9 @@ from django.db.models import F, Value, Case, When, CharField
 from django.db.models.functions import Concat
 from .forms import OutlayFrom
 from django.db import transaction
+import pymupdf
+from pathlib import Path
+import re
 
 
 
@@ -122,53 +125,115 @@ def update_outlay(uuid, form: OutlayFrom) -> Outlay:
     return outlay
 
 
-import pdfplumber
-import re 
-import tabula
-import pandas as pd
-
-
-def pdf_parser(filepath) -> dict:
+class PDFCore:
     TABLE_FIELDS = ('id', 'item_name', 'amount', 'price_netto', 'price_netto2', 'tax_percent', 'tax_price', 'price_brutto')
-
-    tables = tables = tabula.read_pdf(filepath, pages="1", lattice=True)
-    df = tables[0]
-    df.columns = TABLE_FIELDS
-    first_col = df.columns[0]
-    df_filtered = df[pd.to_numeric(df[first_col], errors="coerce").notna()]
-    table = df_filtered.to_dict(orient="records")
-
-
-    reg_values = [
+    REG_FIELDS = [
         ("invoice_number", re.compile(r'Faktura\s+numer\s+([A-Z\d/]+)', re.IGNORECASE)),
         ("sale_date", re.compile(r'Data\s+wystawienia:\s+Puchały,\s*(\d{4}-\d{2}-\d{2})', re.IGNORECASE)),
         ("sold_date_limit", re.compile(r'Data\s+sprzedaży:\s*(\d{4}-\d{2}-\d{2})', re.IGNORECASE)),
         ("payment_date_limit", re.compile(r'Termin\s+płatności:\s*(\d{4}-\d{2}-\d{2})', re.IGNORECASE)),
         ("payment", re.compile(r'Płatność:\s*([A-ZĄĆĘŁŃÓŚŻŹ]*)', re.IGNORECASE)),
-        ("company_nip", re.compile(r'NIP\s+(\d+)', re.IGNORECASE)),
-        ("company_bdo", re.compile(r'BDO\s+(\d+)', re.IGNORECASE)),
+        [("company_nip", re.compile(r'NIP\s+(\d+)', re.IGNORECASE)),
+        ("company_bdo", re.compile(r'BDO\s+(\d+)', re.IGNORECASE))],
+        re.compile(r'^LP\n.*', re.IGNORECASE),
         ("price_netto", re.compile(r'Wartość netto\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
         ("price_vat", re.compile(r'Wartość VAT\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
         ("price_brutto", re.compile(r'Wartość brutto\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
         ("to_pay", re.compile(r'Do zapłaty\s+([\d,\s]*[\d,]*)\s+', re.IGNORECASE)),
     ]
 
-    str_data = {}
+    def __init__(self, filepath: str|Path):
+        self.__filepath: Path = Path(filepath)
+        self.__data = {'table': []}
 
-    with pdfplumber.open("test.pdf") as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if not text:
-                continue
 
-            for line in text.split('\n'):
-                for key, pattern in reg_values:
-                    match = pattern.search(line)
-                    if match: str_data[key] = match.group(1)
-    
+    def get_table(self, string: str, string2: str, table_len: int) -> dict:
+        id_text_re = re.compile(r'^(\d+)\s*(.*)$', re.S)
+        car_vin_re = re.compile(r'[A-Z0-9]{5,}')
 
-    return {
-        'table': table,
-        'str_data': str_data,
-    }
+        m1 = id_text_re.match(string.strip())
+        if m1:
+            id = m1.group(1)
+            name = m1.group(2).replace('\n', ' ').replace('\\', ', ')
 
+            prices = string2.rstrip('\n').split('\n')
+
+            raw_data = [id, name] + prices
+        else: return {}
+
+        if len(raw_data) != table_len:
+            return {}
+
+        return dict(zip(self.TABLE_FIELDS, raw_data)) | {'current_car_vin': car_vin_re.search(name).group(0)}
+
+
+    def get_text_data(self, field: str|list, reg: re.Pattern|None, string: str) -> dict:
+        if type(field) == str and type(reg) == re.Pattern:
+            match = reg.search(string)
+            if match:
+                return {field: match.group(1)}
+            
+        if type(field) == list and reg is None:
+            data: dict = {}
+            for field_name, patter in field:
+                match = patter.search(string)
+                if match: data[field_name] = match.group(1)
+
+            return data
+
+
+    def parse(self):
+        self.__data = {'table': []}
+        doc = pymupdf.open(self.__filepath)
+
+        for page in doc:
+            blocks_sorted = sorted(
+                page.get_text("blocks"),
+                key=lambda b: (round(b[1], 1), round(b[0], 1))
+            )
+
+            i = 0
+            n = len(blocks_sorted)
+
+            for pattern_field in self.REG_FIELDS:
+                while i < n:
+                    line = blocks_sorted[i][4]
+
+                    # Get value
+                    if isinstance(pattern_field, tuple):
+                        field, pattern = pattern_field
+                        field_data = self.get_text_data(field, pattern, line)
+                        i += 1
+                        if field_data:
+                            self.__data.update(field_data)
+                            break
+                        continue
+
+                    # Get few values in one line
+                    if isinstance(pattern_field, list):
+                        field_data = self.get_text_data(pattern_field, None, line)
+                        i += 1
+                        if field_data:
+                            self.__data.update(field_data)
+                            break
+                        continue
+
+                    #Get Table
+                    if isinstance(pattern_field, re.Pattern):
+                        match = pattern_field.match(line)
+                        i += 1
+                        if match:
+                            while i + 1 < n:
+                                row = self.get_table(
+                                    blocks_sorted[i][4],
+                                    blocks_sorted[i + 1][4],
+                                    len(self.TABLE_FIELDS)
+                                )
+                                if row:
+                                    self.__data['table'].append(row)
+                                    i += 2
+                                    continue
+                                break
+                            break
+
+        return self.__data
