@@ -44,12 +44,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "tailwind",
-    "theme",
     'widget_tweaks',
     'django_filters',
     'core',
-    'django_browser_reload'
+    'django_browser_reload',
 ]
 
 MIDDLEWARE = [
@@ -135,7 +133,7 @@ TIME_ZONE = 'Europe/Kyiv'
 
 USE_TZ = True
 
-AUTH_USER_MODEL="core.User"
+AUTH_USER_MODEL='core.User'
 
 SIGNUP_REDIRECT_URL="http://127.0.0.1:8000/accounts/login/"
 # Static files (CSS, JavaScript, Images)
@@ -148,12 +146,11 @@ STATICFILES_DIRS = [
     BASE_DIR / "theme" / "static",   
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-TAILWIND_APP_NAME = 'theme'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+AUTH_USER_MODEL = 'core.User'

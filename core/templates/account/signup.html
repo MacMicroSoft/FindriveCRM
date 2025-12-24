@@ -1,0 +1,29 @@
+{% extends 'account/authbase.html' %}
+{% load static %}
+
+{% block title %}
+<title>Singup</title>
+{% endblock %}
+
+{% block scripts_js %}
+<!-- script -->
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <form method="POST" class="auth-box">
+        {% csrf_token %}
+        <h1 class="text-center">Реєстрація</h1>
+
+        {% if form.errors %}
+            <div class="errors">
+                {{ form.errors }}
+            </div>
+        {% endif %}
+        
+        {{ form.as_p }}
+
+        <button type="submit" class="button-submit">Увійти</button>
+    </form>
+</div>
+{% endblock %}
