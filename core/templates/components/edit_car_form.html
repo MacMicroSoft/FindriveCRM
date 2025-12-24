@@ -1,0 +1,485 @@
+{% load static %}
+
+<style>
+    .custom-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(2px);
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        padding: 1rem;
+        overflow-y: auto;
+    }
+    .custom-modal-content {
+        background: #fff;
+        width: 100%;
+        max-width: 800px;
+        max-height: 90vh;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+        animation: modalShow 0.25s ease-out;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        margin: auto;
+        position: relative;
+    }
+    @media (max-width: 768px) {
+        .custom-modal {
+            padding: 0.5rem;
+            align-items: flex-start;
+        }
+        .custom-modal-content {
+            max-width: 100%;
+            max-height: 100vh;
+            border-radius: 0;
+            padding: 1rem;
+        }
+    }
+    @keyframes modalShow {
+        from { opacity: 0; transform: translateY(-20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: none;
+        margin-bottom: 1rem;
+        flex-shrink: 0;
+    }
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+    }
+    .close-modal {
+        font-size: 26px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        color: #6b7280;
+    }
+    .close-modal:hover {
+        color: #111827;
+    }
+    .modal-body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(90vh - 140px);
+        padding-right: 0.5rem;
+        flex: 1;
+        min-height: 0;
+    }
+    .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    .modal-body .border_input,
+    .modal-body input[type="text"],
+    .modal-body input[type="number"],
+    .modal-body select {
+        width: 100%;
+        margin-bottom: 14px;
+        padding: 12px 14px;
+        border-radius: 8px;
+        border: 1.6px solid #cfcfcf;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .modal-body .border_input:focus,
+    .modal-body input:focus,
+    .modal-body select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+        outline: none;
+    }
+    .modal-footer {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+        flex-shrink: 0;
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+    .btn-save {
+        padding: 12px 24px;
+        background: #16a34a;
+        border-radius: 10px;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .btn-save:hover {
+        background: #15803d;
+    }
+    .btn-cancel {
+        padding: 12px 24px;
+        background: #f3f4f6;
+        border-radius: 10px;
+        color: #374151;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .btn-cancel:hover {
+        background: #e5e7eb;
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .photo-upload-area {
+        border: 2px dashed #cfcfcf;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 1rem;
+    }
+    .photo-upload-area:hover {
+        border-color: #3b82f6;
+        background: #f0f9ff;
+    }
+    .photo-preview-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .photo-preview-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .photo-preview-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+    }
+    .photo-preview-item .remove-photo {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        background: rgba(220, 38, 38, 0.8);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div id="editCarModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">Редагувати автомобіль</h5>
+            <button type="button" class="close-modal" id="closeEditCarModalBtn">&times;</button>
+        </div>
+
+        <form method="POST" id="editCarForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div>
+                        <label for="id_vin_code" class="form-label">VIN код</label>
+                        <input type="text" name="vin_code" id="id_vin_code" class="border_input" required>
+                    </div>
+                    <div>
+                        <label for="id_license_plate" class="form-label">Номерний знак</label>
+                        <input type="text" name="license_plate" id="id_license_plate" class="border_input" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div>
+                        <label for="id_mark" class="form-label">Марка</label>
+                        <input type="text" name="mark" id="id_mark" class="border_input" required>
+                    </div>
+                    <div>
+                        <label for="id_model" class="form-label">Модель</label>
+                        <input type="text" name="model" id="id_model" class="border_input" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div>
+                        <label for="id_year" class="form-label">Рік</label>
+                        <input type="number" name="year" id="id_year" class="border_input" required>
+                    </div>
+                    <div>
+                        <label for="id_mileage" class="form-label">Пробіг</label>
+                        <input type="number" name="mileage" id="id_mileage" class="border_input" step="0.1" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div>
+                        <label for="id_color" class="form-label">Колір</label>
+                        <input type="text" name="color" id="id_color" class="border_input" required>
+                    </div>
+                    <div>
+                        <label for="id_fuel_type" class="form-label">Тип палива</label>
+                        <select name="fuel_type" id="id_fuel_type" class="border_input">
+                            <option value="">Оберіть тип палива</option>
+                            <option value="petrol">Petrol</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="electric">Electric</option>
+                            <option value="hybrid">Hybrid</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div>
+                        <label for="id_status" class="form-label">Статус</label>
+                        <select name="status" id="id_status" class="border_input">
+                            <option value="">Оберіть статус</option>
+                            <option value="Active">Active</option>
+                            <option value="Await">Await</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Service">Service</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="id_drive_type" class="form-label">Привід</label>
+                        <input type="text" name="drive_type" id="id_drive_type" class="border_input">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="id_owner" class="form-label">Власник</label>
+                    <select name="owner" id="id_owner" class="border_input">
+                        <option value="">Оберіть власника</option>
+                    </select>
+                </div>
+                
+                <script>
+                    // Завантажити список власників при відкритті модального вікна
+                    function loadOwners() {
+                        const ownerSelect = document.getElementById('id_owner');
+                        if (ownerSelect && ownerSelect.options.length === 1) {
+                            // Завантажити власників з форми деталей або через API
+                            const detailForm = document.getElementById('carDetailForm');
+                            if (detailForm) {
+                                const ownerSelectInDetail = detailForm.querySelector('select[name="owner"]');
+                                if (ownerSelectInDetail) {
+                                    // Копіювати опції з форми деталей
+                                    Array.from(ownerSelectInDetail.options).forEach(option => {
+                                        const newOption = option.cloneNode(true);
+                                        ownerSelect.appendChild(newOption);
+                                    });
+                                }
+                            }
+                        }
+                    }
+                </script>
+
+                <div>
+                    <label for="id_photos" class="form-label">Фото (можна завантажити до 3 фото)</label>
+                    <div class="photo-upload-area" id="photoUploadArea">
+                        <input type="file" name="photos" id="id_photos" accept="image/*" multiple style="display: none;">
+                        <div style="text-align: center;">
+                            <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.5rem; color: #6b7280;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <p style="margin: 0; color: #6b7280;">Натисніть для завантаження фото</p>
+                            <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: #9ca3af;">Можна вибрати від 1 до 3 фото</p>
+                        </div>
+                    </div>
+                    <div id="photosPreview" class="photo-preview-container"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" id="cancelEditCarBtn">Скасувати</button>
+                <button type="submit" class="btn-save">Зберегти зміни</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+        function openEditCarModal(carId) {
+            const editModal = document.getElementById("editCarModal");
+            const editForm = document.getElementById("editCarForm");
+            
+            // Заповнити форму даними з window.carFormData (якщо доступно)
+            if (window.carFormData) {
+                Object.keys(window.carFormData).forEach(name => {
+                    const input = editForm.querySelector(`[name="${name}"]`);
+                    if (input) {
+                        const data = window.carFormData[name];
+                        if (data.type === 'checkbox') {
+                            input.checked = data.checked;
+                        } else if (name === 'owner') {
+                            // Для select owner потрібно скопіювати опції
+                            const detailForm = document.getElementById('carDetailForm');
+                            if (detailForm) {
+                                const ownerSelectInDetail = detailForm.querySelector('select[name="owner"]');
+                                const ownerSelect = editForm.querySelector('select[name="owner"]');
+                                if (ownerSelectInDetail && ownerSelect) {
+                                    // Очистити та скопіювати опції
+                                    ownerSelect.innerHTML = '';
+                                    Array.from(ownerSelectInDetail.options).forEach(option => {
+                                        const newOption = option.cloneNode(true);
+                                        ownerSelect.appendChild(newOption);
+                                    });
+                                    ownerSelect.value = data.value;
+                                }
+                            }
+                        } else {
+                            input.value = data.value;
+                        }
+                    }
+                });
+            }
+            
+            editForm.action = `/core/cars/update/${carId}/`;
+            editModal.style.display = "flex";
+        }
+
+    const editCarModal = document.getElementById("editCarModal");
+    const closeEditCarBtn = document.getElementById("closeEditCarModalBtn");
+    const cancelEditCarBtn = document.getElementById("cancelEditCarBtn");
+
+    if (closeEditCarBtn) {
+        closeEditCarBtn.addEventListener("click", () => {
+            editCarModal.style.display = "none";
+        });
+    }
+
+    if (cancelEditCarBtn) {
+        cancelEditCarBtn.addEventListener("click", () => {
+            editCarModal.style.display = "none";
+        });
+    }
+
+    if (editCarModal) {
+        editCarModal.addEventListener("click", (e) => {
+            if (e.target === editCarModal) {
+                editCarModal.style.display = "none";
+            }
+        });
+    }
+
+    // Обробка завантаження фото
+    const photoUploadArea = document.getElementById("photoUploadArea");
+    const photoInput = document.getElementById("id_photos");
+    const photosPreview = document.getElementById("photosPreview");
+
+    if (photoUploadArea && photoInput) {
+        photoUploadArea.addEventListener("click", () => {
+            photoInput.click();
+        });
+
+        photoInput.addEventListener("change", (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 3) {
+                alert("Можна завантажити максимум 3 фото");
+                return;
+            }
+            
+            photosPreview.innerHTML = "";
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement("div");
+                    div.className = "photo-preview-item";
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview ${index + 1}">
+                        <button type="button" class="remove-photo" onclick="removePhoto(${index})">×</button>
+                    `;
+                    photosPreview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    }
+
+    function removePhoto(index) {
+        const dt = new DataTransfer();
+        const files = Array.from(photoInput.files);
+        files.forEach((file, i) => {
+            if (i !== index) {
+                dt.items.add(file);
+            }
+        });
+        photoInput.files = dt.files;
+        
+        // Оновити прев'ю
+        const filesArray = Array.from(photoInput.files);
+        photosPreview.innerHTML = "";
+        filesArray.forEach((file, i) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const div = document.createElement("div");
+                div.className = "photo-preview-item";
+                div.innerHTML = `
+                    <img src="${e.target.result}" alt="Preview ${i + 1}">
+                    <button type="button" class="remove-photo" onclick="removePhoto(${i})">×</button>
+                `;
+                photosPreview.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const editCarForm = document.getElementById("editCarForm");
+    if (editCarForm) {
+        editCarForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(editCarForm);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const carId = editCarForm.action.match(/cars\/update\/([^\/]+)\//)[1];
+
+            const response = await fetch(`/core/cars/update/${carId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest"
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === "ok") {
+                editCarModal.style.display = "none";
+                window.location.reload();
+            } else {
+                console.log("Помилки форми:", data.errors);
+                alert("Помилка: " + JSON.stringify(data.errors));
+            }
+        });
+    }
+</script>
+

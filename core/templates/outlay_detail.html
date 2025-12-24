@@ -1,0 +1,541 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Редагувати витрату{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0; flex-wrap: wrap;">
+            <a href="{% url 'outlay' %}" style="color: #6b7280; text-decoration: none; display: flex; align-items: center; flex-shrink: 0;">
+                <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <span>Редагувати витрату</span>
+        </h1>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="outlay-detail-container" style="background: white; border: 1px solid #e5e7eb; border-radius: 0.75rem; max-width: 32rem; margin: 0 auto; padding: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+        <form method="POST" action="{% url 'outlay_detail' pk=outlay_uuid %}" id="outlayEditForm">
+        {% csrf_token %}
+            
+            <!-- Error Messages -->
+            {% if form.errors %}
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: start; gap: 0.5rem;">
+                    <svg style="width: 1.25rem; height: 1.25rem; color: #dc2626; flex-shrink: 0; margin-top: 0.125rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div style="flex: 1;">
+                        <p style="color: #dc2626; font-weight: 500; font-size: 0.875rem; margin-bottom: 0.5rem;">Помилки валідації:</p>
+                        <ul style="color: #991b1b; font-size: 0.875rem; margin: 0; padding-left: 1.25rem;">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                    <li>{{ field|title }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Car Selection -->
+                <div>
+                    <label for="{{ form.car.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Автомобіль <span style="color: #dc2626;">*</span>
+                    </label>
+                    <select name="{{ form.car.name }}" id="{{ form.car.id_for_label }}" required
+                            style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid {% if form.car.errors %}#dc2626{% else %}#d1d5db{% endif %}; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; background: white; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                            onblur="this.style.borderColor='{% if form.car.errors %}#dc2626{% else %}#d1d5db{% endif %}'; this.style.boxShadow='none'"
+                            onchange="updateCarSelection(this)">
+                        <option value="">Оберіть автомобіль</option>
+                        {% for car in form.car.field.queryset %}
+                            <option value="{{ car.uuid }}" {% if form.car.value == car.uuid or form.car.value == car %}selected{% endif %}>
+                                {{ car.mark }} {{ car.model }} ({{ car.license_plate }}) - {{ car.year }} рік
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if form.car.errors %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; padding: 0.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.375rem;">
+                            <svg style="width: 1rem; height: 1rem; color: #dc2626; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p style="color: #dc2626; font-size: 0.75rem; margin: 0;">{{ form.car.errors.0 }}</p>
+                        </div>
+                    {% endif %}
+                    <script>
+                        function updateCarSelection(select) {
+                            if (select.value) {
+                                select.style.borderColor = '#10b981';
+                            } else {
+                                select.style.borderColor = '#dc2626';
+                            }
+                        }
+                        
+                        // Initialize on page load
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const select = document.getElementById('{{ form.car.id_for_label }}');
+                            if (select && select.value) {
+                                select.style.borderColor = '#10b981';
+                            }
+                        });
+                    </script>
+                </div>
+
+                <!-- Service Type -->
+                <div>
+                    <label style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Тип витрати <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white;"
+                               id="serviceTypeOtherLabel"
+                               onmouseover="if(!document.getElementById('id_service_type_0').checked) this.style.borderColor='#2563eb'"
+                               onmouseout="if(!document.getElementById('id_service_type_0').checked) this.style.borderColor='#d1d5db'">
+                            <input type="radio" name="service_type" value="other" id="id_service_type_0" required
+                                   style="width: 1rem; height: 1rem; cursor: pointer;"
+                                   onchange="toggleServiceFields()" {% if form.service_type.value == 'other' %}checked{% endif %}>
+                            <span style="color: #374151; font-size: 0.875rem; font-weight: 500;">Інші</span>
+                        </label>
+                        <label style="flex: 1; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white;"
+                               id="serviceTypeServiceLabel"
+                               onmouseover="if(!document.getElementById('id_service_type_1').checked) this.style.borderColor='#2563eb'"
+                               onmouseout="if(!document.getElementById('id_service_type_1').checked) this.style.borderColor='#d1d5db'">
+                            <input type="radio" name="service_type" value="service" id="id_service_type_1" required
+                                   style="width: 1rem; height: 1rem; cursor: pointer;"
+                                   onchange="toggleServiceFields()" {% if form.service_type.value == 'service' %}checked{% endif %}>
+                            <span style="color: #374151; font-size: 0.875rem; font-weight: 500;">Сервіс</span>
+                        </label>
+                    </div>
+                    <script>
+                        document.getElementById('id_service_type_0').addEventListener('change', function() {
+                            if(this.checked) {
+                                document.getElementById('serviceTypeOtherLabel').style.borderColor = '#2563eb';
+                                document.getElementById('serviceTypeOtherLabel').style.background = '#eff6ff';
+                                document.getElementById('serviceTypeServiceLabel').style.borderColor = '#d1d5db';
+                                document.getElementById('serviceTypeServiceLabel').style.background = 'white';
+                            }
+                        });
+                        document.getElementById('id_service_type_1').addEventListener('change', function() {
+                            if(this.checked) {
+                                document.getElementById('serviceTypeServiceLabel').style.borderColor = '#2563eb';
+                                document.getElementById('serviceTypeServiceLabel').style.background = '#eff6ff';
+                                document.getElementById('serviceTypeOtherLabel').style.borderColor = '#d1d5db';
+                                document.getElementById('serviceTypeOtherLabel').style.background = 'white';
+                            }
+                        });
+                        // Set initial state
+                        if(document.getElementById('id_service_type_0').checked) {
+                            document.getElementById('serviceTypeOtherLabel').style.borderColor = '#2563eb';
+                            document.getElementById('serviceTypeOtherLabel').style.background = '#eff6ff';
+                        } else if(document.getElementById('id_service_type_1').checked) {
+                            document.getElementById('serviceTypeServiceLabel').style.borderColor = '#2563eb';
+                            document.getElementById('serviceTypeServiceLabel').style.background = '#eff6ff';
+                        }
+                    </script>
+                </div>
+
+                <!-- Category (for Other type) -->
+                <div id="categoryWrapper" style="display: {% if form.service_type.value == 'service' %}none{% else %}block{% endif %};">
+                    <label for="{{ form.category.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Підкатегорія
+                    </label>
+                    <select name="{{ form.category.name }}" id="{{ form.category.id_for_label }}"
+                            style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; background: white; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+                            onchange="toggleCategoryName()">
+                        {% for value, label in form.category.field.choices %}
+                            <option value="{{ value }}" {% if form.category.value == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category Name (for Another category) -->
+                <div id="categoryNameWrapper" style="display: {% if form.category.value == 'another' %}block{% else %}none{% endif %};">
+                    <label for="{{ form.category_name.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Власна підкатегорія
+                    </label>
+                    <input type="text" name="{{ form.category_name.name }}" id="{{ form.category_name.id_for_label }}" 
+                           value="{{ form.category_name.value|default:'' }}"
+                           placeholder="Введіть назву підкатегорії"
+                           style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                           onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                           onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                </div>
+
+                <!-- Service (for Service type) -->
+                <div id="serviceWrapper" style="display: {% if form.service_type.value == 'service' %}block{% else %}none{% endif %};">
+                    <label for="{{ form.service.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Сервіс
+                    </label>
+                    <select name="{{ form.service.name }}" id="{{ form.service.id_for_label }}"
+                            style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; background: white; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                            onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'"
+                            onchange="toggleServiceNameField()">
+                        <option value="">Оберіть сервіс</option>
+                        {% for service in form.service.field.queryset %}
+                            <option value="{{ service.uuid }}" {% if form.service.value == service.uuid %}selected{% endif %}>
+                                {{ service.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Service Name (for Service type) -->
+                <div id="serviceNameWrapper" style="display: {% if form.service_type.value == 'service' %}block{% else %}none{% endif %};">
+                    <label for="{{ form.service_name.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Або введіть назву сервісу вручну
+                    </label>
+                    <input type="text" name="{{ form.service_name.name }}" id="{{ form.service_name.id_for_label }}" 
+                           value="{{ form.service_name.value|default:'' }}"
+                           placeholder="Введіть назву сервісу"
+                           style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                           onfocus="if(!this.disabled) { this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'; }"
+                           onblur="if(!this.disabled) { this.style.borderColor='#d1d5db'; this.style.boxShadow='none'; }">
+                </div>
+
+                <!-- Name (only for Service type) -->
+                <div id="nameWrapper" style="display: {% if form.service_type.value == 'service' %}block{% else %}none{% endif %};">
+                    <label for="{{ form.name.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Назва витрати <span style="color: #dc2626;">*</span>
+                    </label>
+                    <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}"
+                           value="{{ form.name.value|default:'' }}"
+                           placeholder="Наприклад: Заправка палива, Ремонт гальм тощо"
+                           style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                           onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                           onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                    {% if form.name.errors %}
+                        <p style="color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem;">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Comment -->
+                <div>
+                    <label for="{{ form.comment.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Коментар
+                    </label>
+                    <textarea name="{{ form.comment.name }}" id="{{ form.comment.id_for_label }}"
+                              rows="3" placeholder="Додаткова інформація про витрату (необов'язково)"
+                              style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; font-family: inherit; resize: vertical; transition: all 0.2s;"
+                              onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                              onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">{{ form.comment.value|default:'' }}</textarea>
+                    {% if form.comment.errors %}
+                        <p style="color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem;">{{ form.comment.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Date -->
+                <div>
+                    <label for="{{ form.date.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Дата <span style="color: #dc2626;">*</span>
+                    </label>
+                    <input type="date" name="{{ form.date.name }}" id="{{ form.date.id_for_label }}" required
+                           value="{% if form.date.value %}{{ form.date.value|date:'Y-m-d' }}{% endif %}"
+                           style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                           onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                           onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                    {% if form.date.errors %}
+                        <p style="color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem;">{{ form.date.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Price Type -->
+                <div>
+                    <label style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Вартість (PLN) <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div class="radio-group" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="flex: 1; min-width: 140px; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white;"
+                               id="priceTypeFullLabel"
+                               onmouseover="if(!document.getElementById('id_price_type_0').checked) this.style.borderColor='#2563eb'"
+                               onmouseout="if(!document.getElementById('id_price_type_0').checked) this.style.borderColor='#d1d5db'">
+                            <input type="radio" name="price_type" value="full" id="id_price_type_0" required
+                                   style="width: 1rem; height: 1rem; cursor: pointer; flex-shrink: 0;"
+                                   onchange="togglePriceFields()" {% if form.price_type.value == 'full' %}checked{% endif %}>
+                            <span style="color: #374151; font-size: 0.875rem; font-weight: 500;">Загальна сума</span>
+                        </label>
+                        <label style="flex: 1; min-width: 140px; display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; background: white;"
+                               id="priceTypePartLabel"
+                               onmouseover="if(!document.getElementById('id_price_type_1').checked) this.style.borderColor='#2563eb'"
+                               onmouseout="if(!document.getElementById('id_price_type_1').checked) this.style.borderColor='#d1d5db'">
+                            <input type="radio" name="price_type" value="part" id="id_price_type_1" required
+                                   style="width: 1rem; height: 1rem; cursor: pointer; flex-shrink: 0;"
+                                   onchange="togglePriceFields()" {% if form.price_type.value == 'part' %}checked{% endif %}>
+                            <span style="color: #374151; font-size: 0.875rem; font-weight: 500;">Ціна × Кількість</span>
+                        </label>
+                    </div>
+                    <script>
+                        document.getElementById('id_price_type_0').addEventListener('change', function() {
+                            if(this.checked) {
+                                document.getElementById('priceTypeFullLabel').style.borderColor = '#2563eb';
+                                document.getElementById('priceTypeFullLabel').style.background = '#eff6ff';
+                                document.getElementById('priceTypePartLabel').style.borderColor = '#d1d5db';
+                                document.getElementById('priceTypePartLabel').style.background = 'white';
+                            }
+                        });
+                        document.getElementById('id_price_type_1').addEventListener('change', function() {
+                            if(this.checked) {
+                                document.getElementById('priceTypePartLabel').style.borderColor = '#2563eb';
+                                document.getElementById('priceTypePartLabel').style.background = '#eff6ff';
+                                document.getElementById('priceTypeFullLabel').style.borderColor = '#d1d5db';
+                                document.getElementById('priceTypeFullLabel').style.background = 'white';
+                            }
+                        });
+                        // Set initial state
+                        if(document.getElementById('id_price_type_0').checked) {
+                            document.getElementById('priceTypeFullLabel').style.borderColor = '#2563eb';
+                            document.getElementById('priceTypeFullLabel').style.background = '#eff6ff';
+                        } else if(document.getElementById('id_price_type_1').checked) {
+                            document.getElementById('priceTypePartLabel').style.borderColor = '#2563eb';
+                            document.getElementById('priceTypePartLabel').style.background = '#eff6ff';
+                        }
+                    </script>
+                </div>
+
+                <!-- Full Price -->
+                <div id="fullPriceWrapper" style="display: {% if form.price_type.value == 'part' %}none{% else %}block{% endif %};">
+                    <label for="{{ form.full_price.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                        Загальна сума (PLN)
+                    </label>
+                    <input type="number" name="{{ form.full_price.name }}" id="{{ form.full_price.id_for_label }}" 
+                           step="0.01" min="0"
+                           value="{{ form.full_price.value|default:'' }}"
+                           placeholder="0.00"
+                           style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                           onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                           onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                </div>
+
+                <!-- Price Per Item and Count -->
+                <div id="partPriceWrapper" style="display: {% if form.price_type.value == 'part' %}block{% else %}none{% endif %};">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div>
+                            <label for="{{ form.price_per_item.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                                Ціна за одиницю (PLN)
+                            </label>
+                            <input type="number" name="{{ form.price_per_item.name }}" id="{{ form.price_per_item.id_for_label }}" 
+                                   step="0.01" min="0"
+                                   value="{{ form.price_per_item.value|default:'' }}"
+                                   placeholder="0.00"
+                                   style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                                   onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                                   onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                        </div>
+                        <div>
+                            <label for="{{ form.item_count.id_for_label }}" style="display: block; color: #374151; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+                                Кількість
+                            </label>
+                            <input type="number" name="{{ form.item_count.name }}" id="{{ form.item_count.id_for_label }}" 
+                                   min="1"
+                                   value="{{ form.item_count.value|default:'' }}"
+                                   placeholder="1"
+                                   style="width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; transition: all 0.2s;"
+                                   onfocus="this.style.borderColor='#2563eb'; this.style.outline='none'; this.style.boxShadow='0 0 0 3px rgba(37, 99, 235, 0.1)'"
+                                   onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                        </div>
+                    </div>
+                </div>
+        </div>
+
+            <div style="display: flex; gap: 0.75rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; margin-top: 1.5rem;">
+                <a href="{% url 'outlay' %}" 
+                   style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center;"
+                   onmouseover="this.style.background='#f9fafb'"
+                   onmouseout="this.style.background='white'">
+                    Скасувати
+                </a>
+        <button type="submit"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #10b981; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#059669'"
+                        onmouseout="this.style.background='#10b981'">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+            Зберегти
+        </button>
+                <form method="POST" action="{% url 'outlay_delete' pk=outlay_uuid %}" style="flex: 1; margin: 0;" onsubmit="return confirm('Ви впевнені, що хочете видалити цю витрату?');">
+        {% csrf_token %}
+        <button type="submit"
+                            style="width: 100%; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                            onmouseover="this.style.background='#b91c1c'"
+                            onmouseout="this.style.background='#dc2626'">
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+            Видалити
+        </button>
+                </form>
+            </div>
+      </form>
+  </div>
+
+  <script>
+    function toggleServiceFields() {
+        const selected = document.querySelector('input[name="service_type"]:checked')?.value;
+            const categoryWrapper = document.getElementById('categoryWrapper');
+            const serviceWrapper = document.getElementById('serviceWrapper');
+            const serviceNameWrapper = document.getElementById('serviceNameWrapper');
+            const nameWrapper = document.getElementById('nameWrapper');
+            const nameInput = document.getElementById('id_name');
+            
+        if (selected === 'service') {
+                if (categoryWrapper) categoryWrapper.style.display = 'none';
+                if (serviceWrapper) serviceWrapper.style.display = 'block';
+                if (serviceNameWrapper) serviceNameWrapper.style.display = 'block';
+                if (nameWrapper) nameWrapper.style.display = 'block';
+                if (nameInput) nameInput.required = true;
+                // Перевірити стан поля service_name при показі
+                toggleServiceNameField();
+        } else {
+                if (categoryWrapper) categoryWrapper.style.display = 'block';
+                if (serviceWrapper) serviceWrapper.style.display = 'none';
+                if (serviceNameWrapper) serviceNameWrapper.style.display = 'none';
+                if (nameWrapper) nameWrapper.style.display = 'none';
+                if (nameInput) {
+                    nameInput.required = false;
+                    nameInput.value = '';
+                }
+        }
+    }
+
+    function togglePriceFields() {
+        const selected = document.querySelector('input[name="price_type"]:checked')?.value;
+            const fullPriceWrapper = document.getElementById('fullPriceWrapper');
+            const partPriceWrapper = document.getElementById('partPriceWrapper');
+            
+        if (selected === 'full') {
+                if (fullPriceWrapper) fullPriceWrapper.style.display = 'block';
+                if (partPriceWrapper) partPriceWrapper.style.display = 'none';
+        } else if (selected === 'part') {
+                if (fullPriceWrapper) fullPriceWrapper.style.display = 'none';
+                if (partPriceWrapper) partPriceWrapper.style.display = 'block';
+        }
+    }
+
+    function toggleCategoryName() {
+        const categorySelect = document.getElementById('id_category');
+        const categoryNameWrapper = document.getElementById('categoryNameWrapper');
+        const categoryNameInput = document.getElementById('id_category_name');
+        
+        if (categorySelect && categoryNameWrapper) {
+            if (categorySelect.value === 'another') {
+            categoryNameWrapper.style.display = 'block';
+        } else {
+            categoryNameWrapper.style.display = 'none';
+                    if (categoryNameInput) categoryNameInput.value = '';
+                }
+        }
+    }
+
+    function toggleServiceNameField() {
+        const serviceSelect = document.getElementById('{{ form.service.id_for_label }}');
+        const serviceNameInput = document.getElementById('{{ form.service_name.id_for_label }}');
+        
+        if (serviceSelect && serviceNameInput) {
+            if (serviceSelect.value && serviceSelect.value !== '') {
+                // Сервіс вибрано - поле вручну стає неактивним
+                serviceNameInput.disabled = true;
+                serviceNameInput.value = '';
+                serviceNameInput.style.background = '#f3f4f6';
+                serviceNameInput.style.cursor = 'not-allowed';
+                serviceNameInput.style.opacity = '0.6';
+            } else {
+                // Сервіс не вибрано - поле вручну стає активним
+                serviceNameInput.disabled = false;
+                serviceNameInput.style.background = 'white';
+                serviceNameInput.style.cursor = 'text';
+                serviceNameInput.style.opacity = '1';
+            }
+        }
+    }
+
+        // Initialize on page load
+        document.addEventListener("DOMContentLoaded", () => {
+    toggleServiceFields();
+    togglePriceFields();
+    toggleCategoryName();
+    toggleServiceNameField(); // Initialize service name field state
+
+            // Add event listener for category change
+            const categorySelect = document.getElementById('id_category');
+            if (categorySelect) {
+    categorySelect.addEventListener('change', toggleCategoryName);
+            }
+            
+            // Add event listener for service select change
+            const serviceSelect = document.getElementById('{{ form.service.id_for_label }}');
+            if (serviceSelect) {
+                serviceSelect.addEventListener('change', toggleServiceNameField);
+            }
+});
+</script>
+
+<style>
+    /* Responsive styles for outlay detail page */
+    @media (max-width: 768px) {
+        .outlay-detail-container {
+            padding: 1.25rem !important;
+            margin: 0 !important;
+            border-radius: 0.5rem !important;
+        }
+        
+        .radio-group {
+            flex-direction: column !important;
+        }
+        
+        .radio-group label {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+        
+        .form-actions {
+            flex-direction: column-reverse !important;
+        }
+        
+        .form-actions a,
+        .form-actions button {
+            width: 100% !important;
+            min-width: 100% !important;
+        }
+    }
+    
+    @media (max-width: 640px) {
+        .outlay-detail-container {
+            padding: 1rem !important;
+        }
+        
+        h1 {
+            font-size: 1.25rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .outlay-detail-container {
+            padding: 0.875rem !important;
+        }
+        
+        h1 {
+            font-size: 1.125rem !important;
+        }
+        
+        .radio-group label {
+            padding: 0.625rem !important;
+            font-size: 0.8125rem !important;
+        }
+        
+        .form-actions {
+            gap: 0.5rem !important;
+            padding-top: 1rem !important;
+            margin-top: 1rem !important;
+        }
+    }
+</style>
+{% endblock %}

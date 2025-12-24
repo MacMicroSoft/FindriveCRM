@@ -1,0 +1,188 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Деталі сервісу{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+            <svg style="width: 1.5rem; height: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Деталі сервісу
+        </h1>
+        <a href="{% url 'service-list' %}" style="color: #6b7280; text-decoration: none; font-size: 0.875rem;">← Назад до списку</a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <style>
+        .detail-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            max-width: 42rem;
+            margin: 0 auto;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 500;
+            color: #374151;
+        }
+        .detail-value {
+            color: #6b7280;
+        }
+        .detail-actions {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+    </style>
+
+    <div class="detail-card">
+        <div class="detail-row">
+            <span class="detail-label">Назва:</span>
+            <span class="detail-value">{{ object.name }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Адреса:</span>
+            <span class="detail-value">{{ object.location }}</span>
+        </div>
+        {% if object.phone %}
+        <div class="detail-row">
+            <span class="detail-label">Телефон:</span>
+            <span class="detail-value">{{ object.phone }}</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+            <span class="detail-label">Має соціальні мережі:</span>
+            <span class="detail-value">{% if object.has_social_media %}Так{% else %}Ні{% endif %}</span>
+        </div>
+        {% if object.has_social_media and object.social_media %}
+        <div class="detail-row">
+            <span class="detail-label">Соціальні мережі:</span>
+            <span class="detail-value">{{ object.social_media }}</span>
+        </div>
+        {% endif %}
+        <div class="detail-row">
+            <span class="detail-label">Кількість автомобілів:</span>
+            <span class="detail-value">{{ object.cars.count }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Дата створення:</span>
+            <span class="detail-value">{{ object.created_at|date:"d.m.Y H:i" }}</span>
+        </div>
+
+        <div class="detail-actions">
+            <a href="{% url 'service-list' %}" class="btn btn-secondary">Назад</a>
+            <button onclick="openEditServiceModal('{{ object.pk }}')" class="btn btn-primary">Редагувати</button>
+            <button onclick="openDeleteServiceModal('{{ object.pk }}', '{{ object.name }}')" class="btn btn-danger">Видалити</button>
+        </div>
+    </div>
+
+    <!-- Hidden form for editing -->
+    <form method="POST" style="display: none;" id="serviceDetailForm">
+        {% csrf_token %}
+        {{ form }}
+    </form>
+
+    {% include 'components/edit_service_form.html' %}
+    {% include 'components/delete_service_modal.html' %}
+
+    <script>
+        // Заповнити форму даними з detail view
+        const detailForm = document.getElementById('serviceDetailForm');
+        if (detailForm) {
+            window.serviceFormData = {};
+            detailForm.querySelectorAll('input, select, textarea').forEach(input => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    window.serviceFormData[name] = {
+                        value: input.value,
+                        checked: input.checked,
+                        type: input.type
+                    };
+                }
+            });
+        }
+
+        function openEditServiceModal(serviceId) {
+            const editModal = document.getElementById("editServiceModal");
+            const editForm = document.getElementById("editServiceForm");
+            
+            // Заповнити форму даними
+            if (window.serviceFormData) {
+                Object.keys(window.serviceFormData).forEach(name => {
+                    const input = editForm.querySelector(`[name="${name}"]`);
+                    if (input) {
+                        const data = window.serviceFormData[name];
+                        if (data.type === 'checkbox') {
+                            input.checked = data.checked;
+                        } else {
+                            input.value = data.value;
+                        }
+                    }
+                });
+                
+                // Оновити показ поля соціальних мереж
+                const checkbox = editForm.querySelector('input[name="has_social_media"]');
+                const socialField = document.getElementById('editSocialMediaField');
+                if (checkbox && socialField) {
+                    socialField.style.display = checkbox.checked ? 'block' : 'none';
+                    checkbox.addEventListener('change', function() {
+                        socialField.style.display = this.checked ? 'block' : 'none';
+                    });
+                }
+            }
+            
+            editForm.action = `/core/services/update/${serviceId}/`;
+            editModal.style.display = "flex";
+        }
+    </script>
+{% endblock %}
