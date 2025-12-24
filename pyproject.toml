@@ -16,6 +16,9 @@ django-tailwind = "^4.4.2"
 django-browser-reload = "^1.21.0"
 django-widget-tweaks = "^1.5.0"
 django-filter = "^25.2"
+pandas = "^2.3.3"
+tabula-py = "2.10.0"
+pymupdf = "^1.26.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
