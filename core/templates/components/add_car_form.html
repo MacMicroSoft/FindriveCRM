@@ -1,87 +1,1278 @@
 {% load static %}
 
-<div id="addCarModal" class="custom-modal">
-  <div class="custom-modal-content">
-
-      <div class="modal-header">
-        <h5 class="modal-title">Додати авто</h5>
-        <button type="button" class="close-modal" id="closeModalBtn">&times;</button>
+<!-- Modal Overlay -->
+<div id="addCarModal" class="car-modal-overlay">
+    <div class="car-modal-container">
+        <!-- Modal Header -->
+        <div class="car-modal-header">
+            <div class="car-modal-header-content">
+                <div class="car-modal-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="car-modal-title">Додати нове авто</h2>
+                    <p class="car-modal-subtitle">Заповніть інформацію про автомобіль</p>
+                </div>
+            </div>
+            <button type="button" class="car-modal-close" id="closeModalBtn" aria-label="Закрити">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
       </div>
 
-      <form method="POST" action="{% url 'cars' %}">
+        <!-- Modal Form -->
+        <form method="POST" action="{% url 'add_car_ajax' %}" id="addCarForm" enctype="multipart/form-data" class="car-modal-form">
         {% csrf_token %}
-        <div class="modal-body">
-
+            
+            <div class="car-modal-body">
+                <!-- Основна інформація -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Основна інформація
+                    </h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.vin_code.id_for_label }}" class="form-label">
+                                VIN код <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                                </svg>
             {{ form.vin_code }}
-            {{ form.license_plate }}
+                            </div>
+                            {% if form.vin_code.errors %}
+                                <span class="form-error">{{ form.vin_code.errors.0 }}</span>
+                            {% endif %}
+                        </div>
 
-            <div class="mark-model-wrapper">
+                        <div class="form-group">
+                            <label for="{{ form.license_plate.id_for_label }}" class="form-label">
+                                Номерний знак <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                                </svg>
+            {{ form.license_plate }}
+                            </div>
+                            {% if form.license_plate.errors %}
+                                <span class="form-error">{{ form.license_plate.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-grid form-grid-2">
+                        <div class="form-group">
+                            <label for="{{ form.mark.id_for_label }}" class="form-label">
+                                Марка <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
                 {{ form.mark }}
+                            </div>
+                            {% if form.mark.errors %}
+                                <span class="form-error">{{ form.mark.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.model.id_for_label }}" class="form-label">
+                                Модель <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
                 {{ form.model }}
+                            </div>
+                            {% if form.model.errors %}
+                                <span class="form-error">{{ form.model.errors.0 }}</span>
+                            {% endif %}
+                        </div>
             </div>
 
+                    <div class="form-grid form-grid-3">
+                        <div class="form-group">
+                            <label for="{{ form.year.id_for_label }}" class="form-label">
+                                Рік <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
             {{ form.year }}
+                            </div>
+                            {% if form.year.errors %}
+                                <span class="form-error">{{ form.year.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.mileage.id_for_label }}" class="form-label">
+                                Пробіг (км) <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
             {{ form.mileage }}
+                            </div>
+                            {% if form.mileage.errors %}
+                                <span class="form-error">{{ form.mileage.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.color.id_for_label }}" class="form-label">
+                                Колір <span class="required">*</span>
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                                </svg>
             {{ form.color }}
+                            </div>
+                            {% if form.color.errors %}
+                                <span class="form-error">{{ form.color.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Технічні характеристики -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Технічні характеристики
+                    </h3>
+                    
+                    <div class="form-grid form-grid-3">
+                        <div class="form-group">
+                            <label for="{{ form.fuel_type.id_for_label }}" class="form-label">
+                                Тип палива
+                            </label>
+                            <div class="form-input-wrapper form-select-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                                </svg>
             {{ form.fuel_type }}
+                            </div>
+                            {% if form.fuel_type.errors %}
+                                <span class="form-error">{{ form.fuel_type.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.drive_type.id_for_label }}" class="form-label">
+                                Привід
+                            </label>
+                            <div class="form-input-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                {{ form.drive_type }}
+                            </div>
+                            {% if form.drive_type.errors %}
+                                <span class="form-error">{{ form.drive_type.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                Статус
+                            </label>
+                            <div class="form-input-wrapper form-select-wrapper">
+                                <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
             {{ form.status }}
-            {{ form.drive_type }}
-            {{ form.photo }}
-            {{ form.owner }}
+                            </div>
+                            {% if form.status.errors %}
+                                <span class="form-error">{{ form.status.errors.0 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
-
+                <!-- Фото автомобіля -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Фото автомобіля
+                    </h3>
+                    
+                    <div class="form-group">
+                        <input type="file" name="photos" id="id_photos" accept="image/*" multiple style="display: none;">
+                        
+                        <div class="photo-upload-area" id="photoUploadArea">
+                            <div class="photo-upload-content">
+                                <svg class="photo-upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <div class="photo-upload-text">
+                                    <span class="photo-upload-title">Натисніть для завантаження фото</span>
+                                    <span class="photo-upload-hint">Можна вибрати від 1 до 3 фото (JPG, PNG)</span>
+                                </div>
+                            </div>
         </div>
 
-        <div class="modal-footer">
-          <button type="submit" class="btn-save">Створити</button>
+                        <div id="photosPreview" class="photo-preview-container"></div>
+                    </div>
+                </div>
+
+                <!-- Власник -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        Власник
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.owner.id_for_label }}" class="form-label">
+                            Оберіть власника
+                        </label>
+                        <div class="form-input-wrapper form-select-wrapper">
+                            <svg class="form-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            {{ form.owner }}
+                        </div>
+                        {% if form.owner.errors %}
+                            <span class="form-error">{{ form.owner.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="car-modal-footer">
+                <button type="button" class="btn-secondary" id="cancelBtn">Скасувати</button>
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <span class="btn-text">Створити</span>
+                    <svg class="btn-spinner" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="23.562">
+                            <animate attributeName="stroke-dasharray" dur="1.5s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+                            <animate attributeName="stroke-dashoffset" dur="1.5s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
+                </button>
         </div>
       </form>
   </div>
 </div>
 
-<script>
-    const modal = document.getElementById("addCarModal");
-    const openBtn = document.getElementById("openModalBtn");
-    const closeBtn = document.getElementById("closeModalBtn");
+<style>
+/* Modal Overlay */
+.car-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    padding: 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    animation: fadeIn 0.2s ease-out;
+}
 
-    openBtn.addEventListener("click", () => {
-        modal.style.display = "flex";
-    });
+.car-modal-overlay.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-    closeBtn.addEventListener("click", () => {
-        modal.style.display = "none";
-    });
+.car-modal-overlay::-webkit-scrollbar {
+    width: 6px;
+}
 
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) {
-            modal.style.display = "none";
+.car-modal-overlay::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.car-modal-overlay::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.car-modal-overlay::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Modal Container */
+.car-modal-container {
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 100%;
+    max-width: 800px;
+    max-height: 95vh;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+    animation: slideUp 0.3s ease-out;
+    overflow: hidden;
+    position: relative;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Header */
+.car-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.car-modal-header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.car-modal-icon {
+    width: 3rem;
+    height: 3rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.car-modal-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.car-modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.car-modal-subtitle {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    margin: 0.25rem 0 0 0;
+}
+
+.car-modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white;
+    flex-shrink: 0;
+}
+
+.car-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.car-modal-close svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Modal Body */
+.car-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(95vh - 200px);
+}
+
+.car-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.car-modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.car-modal-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.car-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Form Sections */
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section:last-child {
+    margin-bottom: 0;
+}
+
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 1.25rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.form-section-title svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #667eea;
+}
+
+/* Form Grid */
+.form-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.form-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.form-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* Form Group */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.required {
+    color: #ef4444;
+}
+
+/* Form Input Wrapper */
+.form-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.form-input-icon {
+    position: absolute;
+    left: 0.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #9ca3af;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.form-input-wrapper input,
+.form-input-wrapper select {
+    width: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    transition: all 0.2s;
+    background: #ffffff;
+    color: #111827;
+    font-family: inherit;
+}
+
+.form-input-wrapper input:focus,
+.form-input-wrapper select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input-wrapper input:hover,
+.form-input-wrapper select:hover {
+    border-color: #d1d5db;
+}
+
+.form-input-wrapper input::placeholder {
+    color: #9ca3af;
+}
+
+/* Select Wrapper */
+.form-select-wrapper select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+}
+
+/* Form Error */
+.form-error {
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 0.25rem;
+}
+
+/* Photo Upload */
+.photo-upload-area {
+    border: 2px dashed #d1d5db;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #f9fafb;
+}
+
+.photo-upload-area:hover {
+    border-color: #667eea;
+    background: #f3f4f6;
+}
+
+.photo-upload-area.active {
+    border-color: #667eea;
+    background: #eef2ff;
+}
+
+.photo-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.photo-upload-icon {
+    width: 3rem;
+    height: 3rem;
+    color: #9ca3af;
+    transition: color 0.3s;
+}
+
+.photo-upload-area:hover .photo-upload-icon,
+.photo-upload-area.active .photo-upload-icon {
+    color: #667eea;
+}
+
+.photo-upload-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.photo-upload-title {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9375rem;
+}
+
+.photo-upload-hint {
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+/* Photo Preview */
+.photo-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.photo-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    transition: all 0.2s;
+}
+
+.photo-preview-item:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.photo-preview-remove {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    background: rgba(239, 68, 68, 0.9);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 1.125rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.photo-preview-remove:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+/* Modal Footer */
+.car-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+
+/* Buttons */
+.btn-secondary,
+.btn-primary {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: inherit;
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: #374151;
+    border: 2px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px -2px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary.loading {
+    pointer-events: none;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+.btn-primary.loading .btn-text {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.btn-primary.loading .btn-spinner {
+    display: block;
+    opacity: 1;
+    animation: fadeInSpinner 0.3s ease-out;
+}
+
+.btn-spinner {
+    display: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+}
+
+.spinner-circle {
+    transform-origin: center;
+    animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInSpinner {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .car-modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+    
+    .car-modal-container {
+        max-width: 100%;
+        max-height: 95vh;
+        min-height: 50vh;
+        border-radius: 1rem 1rem 0 0;
+        animation: slideUpMobile 0.3s ease-out;
+    }
+    
+    @keyframes slideUpMobile {
+        from {
+            transform: translateY(100%);
         }
-    });
+        to {
+            transform: translateY(0);
+        }
+    }
+    
+    .car-modal-header {
+        padding: 1.25rem 1rem;
+    }
+    
+    .car-modal-body {
+        padding: 1.25rem 1rem;
+        max-height: calc(95vh - 180px);
+    }
+    
+    .form-grid-2,
+    .form-grid-3 {
+        grid-template-columns: 1fr;
+    }
+    
+    .car-modal-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .btn-secondary,
+    .btn-primary {
+        width: 100%;
+    }
+}
 
-    form.addEventListener("submit", async function(e) {
-        e.preventDefault();
+@media (max-width: 480px) {
+    .car-modal-header {
+        padding: 1rem;
+    }
+    
+    .car-modal-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    
+    .car-modal-title {
+        font-size: 1.25rem;
+    }
+    
+    .car-modal-body {
+        padding: 1rem;
+        max-height: calc(95vh - 160px);
+    }
+    
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .photo-preview-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .car-modal-footer {
+        padding: 0.875rem;
+    }
+}
+</style>
 
-        const formData = new FormData(form);
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-        const response = await fetch("{% url 'cars' %}", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": csrfToken,
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            body: formData
+<script>
+(function() {
+    'use strict';
+    
+    // Initialize modal
+    function initModal() {
+        const modal = document.getElementById('addCarModal');
+        const openBtn = document.getElementById('openModalBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        
+        if (!modal) return;
+        
+        // Open modal
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+        }
+        
+        // Close modal
+        function closeModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            const form = document.getElementById('addCarForm');
+            if (form) {
+                form.reset();
+                resetPhotoUpload();
+            }
+        }
+        
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
         });
+        
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+    }
+    
+    // Photo upload
+    let selectedFiles = [];
+    
+    function initPhotoUpload() {
+        const photosInput = document.getElementById('id_photos');
+        const photoUploadArea = document.getElementById('photoUploadArea');
+        const photosPreview = document.getElementById('photosPreview');
+        
+        if (!photosInput || !photoUploadArea || !photosPreview) return;
+        
+        // Click to upload
+        photoUploadArea.addEventListener('click', () => {
+            photosInput.click();
+        });
+        
+        // File change
+        photosInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            
+            if (files.length > 3) {
+                alert('Можна вибрати максимум 3 фото');
+                e.target.value = '';
+                return;
+            }
+            
+            selectedFiles = files;
+            updatePhotoPreview();
+            updateUploadArea();
+        });
+        
+        function updatePhotoPreview() {
+            photosPreview.innerHTML = '';
+            
+            if (selectedFiles.length === 0) {
+                photosPreview.style.display = 'none';
+                return;
+            }
+            
+            photosPreview.style.display = 'grid';
+            
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const item = document.createElement('div');
+                    item.className = 'photo-preview-item';
+                    item.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <button type="button" class="photo-preview-remove" onclick="removePhoto(${index})" aria-label="Видалити">
+                            ×
+                        </button>
+                    `;
+                    photosPreview.appendChild(item);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function updateUploadArea() {
+            if (selectedFiles.length > 0) {
+                photoUploadArea.classList.add('active');
+                const title = photoUploadArea.querySelector('.photo-upload-title');
+                if (title) {
+                    title.textContent = `Вибрано: ${selectedFiles.length} фото`;
+                }
+            } else {
+                photoUploadArea.classList.remove('active');
+                const title = photoUploadArea.querySelector('.photo-upload-title');
+                if (title) {
+                    title.textContent = 'Натисніть для завантаження фото';
+                }
+            }
+        }
+        
+        window.removePhoto = function(index) {
+            selectedFiles.splice(index, 1);
+            
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            photosInput.files = dataTransfer.files;
+            
+            updatePhotoPreview();
+            updateUploadArea();
+        };
+        
+        function resetPhotoUpload() {
+            selectedFiles = [];
+            photosInput.value = '';
+            updatePhotoPreview();
+            updateUploadArea();
+        }
+        
+        // Reset on form reset
+        const form = document.getElementById('addCarForm');
+        if (form) {
+            form.addEventListener('reset', resetPhotoUpload);
+        }
+    }
+    
+    // Form submission
+    function initForm() {
+        const form = document.getElementById('addCarForm');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (!form || !submitBtn) return;
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Clear previous errors
+            document.querySelectorAll('.form-error').forEach(el => el.remove());
+            document.querySelectorAll('.form-input-wrapper input, .form-input-wrapper select').forEach(input => {
+                input.style.borderColor = '';
+            });
+            
+            // Basic client-side validation for required fields
+            let hasErrors = false;
+            const requiredFields = [
+                'vin_code', 'license_plate', 'mark', 'model', 'year', 'mileage', 'color'
+            ];
+            
+            requiredFields.forEach(fieldName => {
+                const field = form.querySelector(`[name="${fieldName}"]`);
+                if (field && (!field.value || field.value.trim() === '')) {
+                    hasErrors = true;
+                    field.style.borderColor = '#ef4444';
+                    const error = document.createElement('span');
+                    error.className = 'form-error';
+                    error.textContent = "Це поле обов'язкове.";
+                    field.closest('.form-group')?.appendChild(error);
+                }
+            });
+            
+            if (hasErrors) {
+                // Scroll to first error
+                const firstError = form.querySelector('.form-error');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+            
+            // Show loading state on button
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+            
+            // Disable all form inputs during submission
+            const formInputs = form.querySelectorAll('input, select, button');
+            formInputs.forEach(input => {
+                if (input !== submitBtn && input.type !== 'hidden' && input.id !== 'id_photos') {
+                    input.disabled = true;
+                }
+            });
+
+            // Create FormData manually to ensure all fields are included
+            const formData = new FormData();
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
+            // Add all form fields
+            const formFields = [
+                'vin_code', 'license_plate', 'mark', 'model', 'year', 
+                'mileage', 'color', 'fuel_type', 'status', 'drive_type', 'owner'
+            ];
+            
+            formFields.forEach(fieldName => {
+                const field = form.querySelector(`[name="${fieldName}"]`);
+                if (field) {
+                    // Add field value, even if empty (for required fields)
+                    // Empty string is valid for some fields
+                    const value = field.value || '';
+                    formData.append(fieldName, value);
+                    console.log(`Added field ${fieldName}: ${value}`);
+                } else {
+                    console.warn(`Field ${fieldName} not found in form!`);
+                }
+            });
+            
+            // Add photos
+            const photosInput = form.querySelector('input[type="file"][name="photos"]');
+            if (photosInput && photosInput.files) {
+                for (let i = 0; i < photosInput.files.length; i++) {
+                    formData.append('photos', photosInput.files[i]);
+                }
+            }
+            
+            // Debug: log FormData contents
+            console.log('FormData contents:');
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}: File - ${value.name}, ${value.size} bytes`);
+                } else {
+                    console.log(`${key}: ${value}`);
+                }
+            }
+            
+            try {
+                const response = await fetch("{% url 'add_car_ajax' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
 
         const data = await response.json();
 
-        if (data.status === "ok") {
-            modal.style.display = "none";
-            form.reset();
+                if (data.status === 'ok') {
+                    // Success
+                    const modal = document.getElementById('addCarModal');
+                    if (modal) modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                    
+                    // Show success message (you can customize this)
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 300);
         } else {
-            console.log("Помилки форми:", data.errors);
-        }
-    });
+                    // Show errors
+                    showFormErrors(data.errors);
+                    submitBtn.classList.remove('loading');
+                    submitBtn.disabled = false;
+                    
+                    // Re-enable form inputs
+                    const formInputsError = form.querySelectorAll('input, select, button');
+                    formInputsError.forEach(input => {
+                        if (input !== submitBtn && input.type !== 'hidden' && input.id !== 'id_photos') {
+                            input.disabled = false;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                
+                // Hide loading overlay
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('active');
+                }
+                
+                alert('Помилка при відправці форми: ' + error.message);
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                
+                // Re-enable form inputs
+                const formInputsCatch = form.querySelectorAll('input, select, button');
+                formInputsCatch.forEach(input => {
+                    if (input !== submitBtn && input.type !== 'hidden' && input.id !== 'id_photos') {
+                        input.disabled = false;
+                    }
+                });
+            }
+        });
+    }
     
+    function showFormErrors(errors) {
+        // Remove existing errors and reset borders
+        document.querySelectorAll('.form-error').forEach(el => el.remove());
+        document.querySelectorAll('.form-input-wrapper input, .form-input-wrapper select').forEach(input => {
+            input.style.borderColor = '';
+        });
+        
+        // Show new errors
+        Object.entries(errors).forEach(([field, messages]) => {
+            const input = document.querySelector(`[name="${field}"]`);
+            if (input) {
+                const error = document.createElement('span');
+                error.className = 'form-error';
+                error.textContent = Array.isArray(messages) ? messages[0] : messages;
+                const formGroup = input.closest('.form-group');
+                if (formGroup) {
+                    formGroup.appendChild(error);
+                }
+                input.style.borderColor = '#ef4444';
+            }
+        });
+    }
+    
+    // Hide errors on input change
+    function initErrorHandling() {
+        const form = document.getElementById('addCarForm');
+        if (!form) return;
+        
+        // Remove errors when user starts typing
+        form.addEventListener('input', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                const error = e.target.closest('.form-group')?.querySelector('.form-error');
+                if (error) {
+                    error.remove();
+                }
+                if (e.target.value.trim() !== '') {
+                    e.target.style.borderColor = '';
+                }
+            }
+        });
+        
+        // Remove errors when form is opened
+        const modal = document.getElementById('addCarModal');
+        if (modal) {
+            const openBtn = document.getElementById('openModalBtn');
+            if (openBtn) {
+                openBtn.addEventListener('click', function() {
+                    // Clear all errors when opening modal
+                    setTimeout(() => {
+                        document.querySelectorAll('.form-error').forEach(el => el.remove());
+                        document.querySelectorAll('.form-input-wrapper input, .form-input-wrapper select').forEach(input => {
+                            input.style.borderColor = '';
+                        });
+                    }, 100);
+                });
+            }
+        }
+    }
+    
+    // Hide initial form errors (they show on page load)
+    function hideInitialErrors() {
+        // Hide all errors that are shown initially
+        document.querySelectorAll('.form-error').forEach(el => {
+            el.style.display = 'none';
+        });
+        // Reset border colors
+        document.querySelectorAll('.form-input-wrapper input, .form-input-wrapper select').forEach(input => {
+            input.style.borderColor = '';
+        });
+    }
+    
+    // Initialize everything
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initModal();
+            initPhotoUpload();
+            initForm();
+            initErrorHandling();
+            hideInitialErrors();
+        });
+    } else {
+        initModal();
+        initPhotoUpload();
+        initForm();
+        initErrorHandling();
+        hideInitialErrors();
+    }
+})();
 </script>
-

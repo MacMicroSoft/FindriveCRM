@@ -1,0 +1,13 @@
+# Frontend files (not used in Django project)
+src
+vite.config.ts
+package.json
+package-lock.json
+index.html
+theme/static/react
+dist
+build
+.cache
+.vite
+node_modules
+

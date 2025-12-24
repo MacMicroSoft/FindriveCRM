@@ -1,28 +1,33 @@
 from django.contrib import admin
-from .models import User, Car, Outlay, OutlayAmount
+from .models import User, Car, Owner, Outlay, OutlayAmount
 from django.contrib.auth.admin import UserAdmin
 
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ['first_name', 'last_name', 'uuid', 'role', 'email', 'is_email_verified']
+    list_display = ["first_name", "last_name", "uuid", "role", "email", "is_email_verified"]
 
 
 @admin.register(Car)
 class CarAdmin(admin.ModelAdmin):
-    list_display = ['mark', 'model', 'year', 'owner', 'status']
+    list_display = ["mark", "model", "year", "owner", "status"]
+
+
+@admin.register(Owner)
+class OwnerAdmin(admin.ModelAdmin):
+    list_display = ["uuid", "first_name", "last_name", "phone"]
 
 
 @admin.register(Outlay)
 class OutlayAdmin(admin.ModelAdmin):
-    list_display = ['uuid', 'type', 'category', 'description', 'cars_list']
+    list_display = ["uuid", "type", "category", "description", "cars_list"]
 
     def cars_list(self, obj):
-        return ", ".join(f'{car.mark} {car.model}' for car in obj.cars.all())
+        return ", ".join(f"{car.mark} {car.model}" for car in obj.cars.all())
 
     cars_list.short_description = "Авто"
 
 
 @admin.register(OutlayAmount)
 class OutlayAmountAdmin(admin.ModelAdmin):
-    list_display = ['uuid', 'price_per_item', 'item_count', 'full_price']
+    list_display = ["uuid", "price_per_item", "item_count", "full_price"]

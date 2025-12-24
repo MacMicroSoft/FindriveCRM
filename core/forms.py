@@ -1,33 +1,57 @@
 from django import forms
-from .models import Car, Owner, Outlay, CarExpense, OutlayCategoryChoice, Service
+from .models import Car, Owner, Outlay, OutlayCategoryChoice, Service, CarPhoto
 from .constants import label_vin
 
-class AddCarForm(forms.ModelForm):
+
+class MultipleFileInput(forms.FileInput):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['owner'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+        self.attrs["multiple"] = True
+
+    def value_from_datadict(self, data, files, name):
+        if hasattr(files, "getlist"):
+            return files.getlist(name)
+        return files.get(name)
+
+
+class AddCarForm(forms.ModelForm):
+    # Поле photos виключено з форми, обробляється окремо в view
+    # photos = forms.FileField(...)  # Видалено, обробляється вручну
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["owner"].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+
+        self.fields["drive_type"].required = False
+
+        if "photo" in self.fields:
+            del self.fields["photo"]
+
+        # Видалити поле photos з форми, воно обробляється окремо
+        if "photos" in self.fields:
+            del self.fields["photos"]
 
     owner = forms.ModelChoiceField(
         queryset=Owner.objects.all(),
         required=False,
         widget=forms.Select(attrs={"class": "border_input w-full"}),
-        empty_label="Оберіть власника"
+        empty_label="Оберіть власника",
     )
+
     class Meta:
         model = Car
         fields = [
-            'vin_code',
-            'license_plate',
-            'mark',
-            'model',
-            'year',
-            'mileage',
-            'color',
-            'fuel_type',
-            'status',
-            'drive_type',
-            'photo',
-            'owner',
+            "vin_code",
+            "license_plate",
+            "mark",
+            "model",
+            "year",
+            "mileage",
+            "color",
+            "fuel_type",
+            "status",
+            "drive_type",
+            "owner",
         ]
 
         widgets = {
@@ -62,24 +86,14 @@ class AddCarForm(forms.ModelForm):
                 }
             ),
             "mileage": forms.NumberInput(
-                attrs={
-                    "class": "border_input w-full",
-                    "placeholder": "Пробіг"
-                }
+                attrs={"class": "border_input w-full", "placeholder": "Пробіг"}
             ),
             "color": forms.TextInput(
-                attrs={
-                    "class": "border_input w-full",
-                    "placeholder": "Колір"
-                }
+                attrs={"class": "border_input w-full", "placeholder": "Колір"}
             ),
             "fuel_type": forms.Select(attrs={"class": "border_input w-full"}),
             "status": forms.Select(attrs={"class": "border_input w-full"}),
             "drive_type": forms.Select(attrs={"class": "border_input w-full"}),
-            "photo": forms.ClearableFileInput(attrs={
-                "class": "border_input w-full",
-                "accept": "image/*"
-            }),
         }
 
 
@@ -96,38 +110,56 @@ class OwnerForm(forms.ModelForm):
         ]
 
         widgets = {
-            "first_name": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "Ім'я"
-            }),
-            "last_name": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "Прізвище"
-            }),
-            "phone": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "+380..."
-            }),
-            "telegram_link": forms.TextInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "@username"
-            }),
-            "email": forms.EmailInput(attrs={
-                "class": "border rounded w-full p-2",
-                "placeholder": "email@example.com"
-            }),
-            "is_active_telegram": forms.CheckboxInput(attrs={
-                "class": "h-4 w-4 text-blue-600"
-            }),
+            "first_name": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "Ім'я"}
+            ),
+            "last_name": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "Прізвище"}
+            ),
+            "phone": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "+48..."}
+            ),
+            "telegram_link": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "@username"}
+            ),
+            "email": forms.EmailInput(
+                attrs={"class": "border_input w-full", "placeholder": "email@example.com"}
+            ),
+            "is_active_telegram": forms.CheckboxInput(attrs={"class": "h-4 w-4 text-blue-600"}),
+        }
+
+
+class ServiceForm(forms.ModelForm):
+    class Meta:
+        model = Service
+        fields = ["name", "location", "phone", "social_media", "has_social_media"]
+
+        widgets = {
+            "name": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "Назва сервісу"}
+            ),
+            "location": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "Адреса"}
+            ),
+            "phone": forms.TextInput(
+                attrs={"class": "border_input w-full", "placeholder": "+380..."}
+            ),
+            "social_media": forms.TextInput(
+                attrs={
+                    "class": "border_input w-full",
+                    "placeholder": "Посилання на соціальні мережі",
+                }
+            ),
+            "has_social_media": forms.CheckboxInput(attrs={"class": "h-4 w-4 text-blue-600"}),
         }
 
 
 class OutlayFrom(forms.Form):
-    car = forms.ModelMultipleChoiceField(
+    car = forms.ModelChoiceField(
         queryset=Car.objects.all(),
         required=True,
         label='Автомобіль',
-        widget=forms.SelectMultiple(attrs={
+        widget=forms.Select(attrs={
             "class": "border_input w-full",
             "placeholder": "Оберіть автомобіль"
         })
@@ -135,7 +167,7 @@ class OutlayFrom(forms.Form):
     service_type = forms.ChoiceField(
         required=True,
         label="Тип витрати",
-        choices=[('other', 'Other'), ('service', 'Service')],
+        choices=[('other', 'Інші'), ('service', 'Сервіс')],
         widget=forms.RadioSelect(attrs={"class": "service-radio"}),
         initial='other',
     )
@@ -166,11 +198,28 @@ class OutlayFrom(forms.Form):
             attrs={"placeholder": "Введіть назву сервісу вручну"}
         )
     )
-    description = forms.CharField(
-        required=True,
-        label='Опис',
+    name = forms.CharField(
+        required=False,
+        label='Назва витрати',
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"placeholder": "Наприклад: Заправка палива, Ремонт гальм тощо"}
+        )
+    )
+    comment = forms.CharField(
+        required=False,
+        label='Коментар',
         widget=forms.Textarea(attrs=
-            {"placeholder": "Детальний опис витрати",
+            {"placeholder": "Додаткова інформація про витрату (необов'язково)",
+            "class": "border_input w-full",
+            "rows": 3
+        }),
+    )
+    description = forms.CharField(
+        required=False,
+        label='Опис (застаріле)',
+        widget=forms.Textarea(attrs=
+            {"placeholder": "Не використовуйте це поле",
             "class": "border_input w-full"
         }),
     )

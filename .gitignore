@@ -8,3 +8,29 @@ venv/
 media/
 *.sqlite3
 .env
+node_modules
+.node_modules/
+
+# Frontend files (not used in Django project)
+src/
+vite.config.ts
+package.json
+package-lock.json
+index.html
+theme/static/react/
+dist/
+build/
+*.tsx
+*.ts
+*.jsx
+*.js
+!manage.py
+!.ruff.toml
+
+# Frontend build artifacts
+.cache/
+.vite/
+*.map
+
+# Backups
+backups/
