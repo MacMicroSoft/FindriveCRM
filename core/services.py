@@ -6,7 +6,7 @@ from django.db.models.functions import Concat
 from .forms import OutlayFrom
 from django.db import transaction
 
-from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto
+from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto, Chat, Message, MessageImage, SenderChoice
 
 logger = logging.getLogger(__name__)
 
@@ -568,3 +568,46 @@ def pdf_parser(filepath) -> dict:
         "table": table,
         "str_data": str_data,
     }
+
+
+def get_chat_list() -> list[dict]:
+    return Chat.objects.filter(is_active=True).all()
+
+
+def get_chat_info(chat_id):
+    print(chat_id)
+    chat = Chat.objects.values().get(tg_chat_id = chat_id)
+    messages = Message.objects.filter(chat=chat.get('uuid'))
+
+    return {**chat, "messages": messages}
+
+
+def create_message(chat: Chat, message: str, from_, is_recived: bool=False) -> Message:
+    msg =  Message.objects.create(
+        chat = chat,
+        sender = SenderChoice(from_),
+        message = message,
+        sended = is_recived
+    )
+
+    return {
+        "sender": msg.sender,
+        "message": msg.message,
+        "created_at": msg.created_at.isoformat(),
+    }
+
+
+def creat_chat(chat_id: int, user_first: str, user_last: str, tagname: str) -> Chat:
+    if not Chat.objects.filter(tg_chat_id=chat_id):
+        return Chat.objects.create(
+            tg_chat_id = chat_id,
+            user_first = user_first,
+            user_last = user_last,
+            tagname = tagname,
+        )
+    
+    return None
+    
+
+def get_chat(chat_id: int) -> Chat:
+    return Chat.objects.get(tg_chat_id=chat_id)

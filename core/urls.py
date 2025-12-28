@@ -22,4 +22,6 @@ urlpatterns = [
     path("outlay/", view.OutlayView.as_view(), name="outlay"),
     path("outlay/<uuid:pk>/", view.OutlatDetailView.as_view(), name="outlay_detail"),
     path("outlay/<uuid:pk>/delete", view.OutlayDeleteView.as_view(), name="outlay_delete"),
+    path("chat/", view.ChatView.as_view(), name="chat_list"),
+    path("chat/<str:chat_id>/", view.ChatDetailView.as_view(), name="chat_detail"),
 ]

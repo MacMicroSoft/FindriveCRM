@@ -1,0 +1,61 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Чати{% endblock %}
+
+{% block head %}
+<style>
+    .chats-page { max-width: 800px; margin: 0 auto; }
+    .chat-list { list-style: none; padding: 0; }
+    .chat-item { margin-bottom: 12px; }
+    .chat-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    }
+    .chat-user { font-weight: 600; }
+    .chat-status.active { color: green; }
+    .chat-status.inactive { color: #999; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chats-page">
+    <h1>Список чатів</h1>
+
+    {% if chats %}
+        <ul class="chat-list">
+            {% for chat in chats %}
+                <li class="chat-item">
+                    <a href="{% url 'chat_detail' chat.tg_chat_id %}">
+                        <div class="chat-card">
+                            <div class="chat-main">
+                                <span class="chat-user">
+                                    {{ chat.user_first }}{{chat.user_last}}
+                                </span>
+                                <span class="chat-tg">
+                                    TG: {{ chat.tg_chat_id }}
+                                </span>
+                            </div>
+                            <div class="chat-meta">
+                                <span class="chat-date">
+                                    {{ chat.created_at|date:"d.m.Y H:i" }}
+                                </span>
+                                {% if not chat.is_active %}
+                                    <span class="chat-status inactive">Закритий</span>
+                                {% else %}
+                                    <span class="chat-status active">Активний</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Чатів поки немає.</p>
+    {% endif %}
+</div>
+{% endblock %}

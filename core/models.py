@@ -357,3 +357,48 @@ class Notifications(AbstractTimeStampModel):
     delivered_at = models.DateTimeField()
 
     is_sended = models.BooleanField(default=False)
+
+
+class Chat(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    tg_chat_id = models.BigIntegerField(unique=True, help_text="ID чату в Telegram", verbose_name="Чат айді телеграма")
+    user_first = models.CharField(max_length=32, verbose_name="Імя ТГ користувача")
+    user_last = models.CharField(max_length=32, verbose_name="Призвіще", blank=True, null=True)
+    tagname = models.CharField(max_length=32, verbose_name="tag користувача телеграм", unique=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Створено")
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Chat {self.user_first}{self.user_last} <-> TG:{self.tg_chat_id}"
+
+
+class SenderChoice(models.TextChoices):
+    WEB = "web", "Web"
+    TELEGRAM = "telegram", "Telegram"
+
+
+class Message(AbstractTimeStampModel):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    chat = models.ForeignKey(
+        Chat,
+        on_delete=models.CASCADE,
+        related_name="messages"
+    )
+    sender = models.CharField(
+        max_length=10,
+        choices=SenderChoice.choices
+    )
+    message = models.TextField()
+    contain_file = models.BooleanField(default=False, verbose_name="Містить вкладення", help_text="Файл, фото, документ")
+    sended = models.BooleanField(default=False, verbose_name="Чи повідомлення доставлено користувачу")
+
+
+class MessageImage(AbstractTimeStampModel):
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="images"
+    )
+    image = models.ImageField(upload_to="chat/images/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)

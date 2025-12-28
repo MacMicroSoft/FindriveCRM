@@ -1,5 +1,5 @@
 import logging
-
+from django.http import Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView, CreateView, ListView, View, TemplateView
 from django.shortcuts import get_object_or_404
@@ -10,7 +10,7 @@ from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse
 from .mixins import RoleRequiredMixin
 from django.shortcuts import render, redirect
-from .services import create_car_with_photos, update_car_with_photos, delete_car, get_outlays, get_outlay, create_outlay, get_outlay_form_data, update_outlay
+from .services import create_car_with_photos, update_car_with_photos, delete_car, get_outlays, get_outlay, create_outlay, get_outlay_form_data, update_outlay, get_chat_list, get_chat_info
 
 logger = logging.getLogger(__name__)
 
@@ -595,6 +595,8 @@ class OutlatDetailView(LoginRequiredMixin, View):
 
 
 class OutlayDeleteView(LoginRequiredMixin, View):
+    def get(self, request):
+        raise Http404("Page not found")
     def post(self, request, pk):
         try:
             outlay = Outlay.objects.get(uuid=pk)
@@ -644,6 +646,26 @@ class OutlayDeleteView(LoginRequiredMixin, View):
                     "errors": {"__all__": [f"Помилка видалення: {str(e)}"]},
                 }, status=500)
             return redirect('outlay')
+
+
+class ChatView(LoginRequiredMixin, View):
+    template_name = "chat/chat.html"
+
+    def get(self, request):
+        context = {'chats': get_chat_list()}
+        return render(request, self.template_name, context)
+
+
+    def post(self, request, new_chat_id):
+        pass
+
+
+class ChatDetailView(LoginRequiredMixin, View):
+    template_name = "chat/chat_detail.html"
+
+    def get(self, request, chat_id):
+        context = {"chat": get_chat_info(chat_id)}
+        return render(request, self.template_name, context)
 
 
 # class NotificationsView(LoginRequiredMixin, TemplateView):

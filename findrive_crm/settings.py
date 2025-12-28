@@ -50,6 +50,7 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "allauth",
@@ -112,6 +113,16 @@ ACCOUNT_EMAIL_VERIFICATION = False
 EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 
 WSGI_APPLICATION = "findrive_crm.wsgi.application"
+ASGI_APPLICATION = "findrive_crm.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 
 # Database
