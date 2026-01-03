@@ -113,7 +113,7 @@
 
         // Send data to socket
         chatSocket.send(JSON.stringify({
-            'message': message,
+            'text': message,
             'sender': 'web',
             'chat_id': chatId,
         }));

@@ -5,7 +5,6 @@ from django.db.models import F, Value, Case, When, CharField
 from django.db.models.functions import Concat
 from .forms import OutlayFrom
 from django.db import transaction
-
 from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto, Chat, Message, MessageImage, SenderChoice
 
 logger = logging.getLogger(__name__)

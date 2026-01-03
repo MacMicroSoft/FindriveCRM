@@ -115,6 +115,11 @@ EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 WSGI_APPLICATION = "findrive_crm.wsgi.application"
 ASGI_APPLICATION = "findrive_crm.asgi.application"
 
+broker_url = "redis://127.0.0.1:6379/0"
+result_backend = "redis://127.0.0.1:6379/0"
+imports = ("core.tasks",)
+
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
