@@ -42,7 +42,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Convert DEBUG to boolean (handle string "True"/"False" or "1"/"0")
 DEBUG_STR = os.getenv("DEBUG", "False").lower()
-DEBUG = DEBUG_STR in ("true", "1", "yes", "on")
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 

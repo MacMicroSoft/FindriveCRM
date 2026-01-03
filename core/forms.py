@@ -1,7 +1,11 @@
 from django import forms
-from .models import Car, Owner, Outlay, OutlayCategoryChoice, Service, CarPhoto
-from .constants import label_vin
-
+from .models import (
+    Car, 
+    Owner, 
+    OutlayCategoryChoice, 
+    Service, 
+    CarServiceState
+)
 
 class MultipleFileInput(forms.FileInput):
     def __init__(self, *args, **kwargs):
@@ -279,3 +283,109 @@ class OutlayFrom(forms.Form):
 
         if service_type == "service" and not category:
             self.add_error("category", "Підкатегорія обов'язкова для сервісу.")
+
+
+class CarServiceForm(forms.ModelForm):
+    regulation_name = forms.CharField(
+        required=False,
+        max_length=255,
+        label='Назва регламенту',
+        widget=forms.TextInput(
+            attrs={
+                "class": "border_input w-full",
+                "placeholder": "Наприклад: SYNCHRONIZED SERVICE REGULATION (EVERY 10 000 KM)"
+            }
+        )
+    )
+    services_json = forms.CharField(
+        required=False,
+        label='Сервіси (JSON)',
+        widget=forms.Textarea(
+            attrs={
+                "class": "border_input w-full",
+                "rows": 10,
+                "style": "display: none;"
+            }
+        )
+    )
+    
+    class Meta:
+        model = CarServiceState
+        fields = ['car', 'service_plan', 'mileage']
+        widgets = {
+            'car': forms.Select(attrs={
+                "class": "border_input w-full",
+                "placeholder": "Оберіть автомобіль"
+            }),
+            'service_plan': forms.Textarea(attrs={
+                "class": "border_input w-full",
+                "rows": 10,
+                "style": "display: none;"
+            }),
+            'mileage': forms.NumberInput(attrs={
+                "class": "border_input w-full",
+                "placeholder": "Пробіг автомобіля"
+            })
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Зробити service_plan необов'язковим, бо воно будується з services_json
+        self.fields['service_plan'].required = False
+    
+    def clean_services_json(self):
+        import json
+        # Читаємо з data напряму, бо це поле не з моделі
+        services_str = self.data.get('services_json', '')
+        
+        if not services_str or (isinstance(services_str, str) and services_str.strip() == ''):
+            return None
+        
+        try:
+            services = json.loads(services_str) if isinstance(services_str, str) else services_str
+        except json.JSONDecodeError as e:
+            raise forms.ValidationError(f"Невірний JSON формат: {str(e)}")
+        
+        if not isinstance(services, list):
+            raise forms.ValidationError("Сервіси повинні бути масивом")
+        
+        if len(services) == 0:
+            raise forms.ValidationError("Масив сервісів не може бути порожнім")
+        
+        required_fields = ['key', 'name', 'interval_km', 'last_service_km']
+        for i, service in enumerate(services):
+            if not isinstance(service, dict):
+                raise forms.ValidationError(f"Сервіс {i+1} повинен бути об'єктом")
+            for field in required_fields:
+                if field not in service:
+                    raise forms.ValidationError(f"Сервіс {i+1} не містить поле '{field}'")
+            if not isinstance(service.get('interval_km'), (int, float)) or service.get('interval_km') <= 0:
+                raise forms.ValidationError(f"Сервіс {i+1}: interval_km повинен бути додатнім числом")
+            if not isinstance(service.get('last_service_km'), (int, float)) or service.get('last_service_km') < 0:
+                raise forms.ValidationError(f"Сервіс {i+1}: last_service_km повинен бути невід'ємним числом")
+        
+        return services
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        regulation_name = cleaned_data.get('regulation_name')
+        services_json = cleaned_data.get('services_json')
+        mileage = cleaned_data.get('mileage')
+        
+        # Якщо є services_json, будуємо service_plan
+        if services_json is not None and len(services_json) > 0:
+            if not mileage:
+                raise forms.ValidationError({'mileage': 'Пробіг обов\'язковий при введенні сервісів'})
+            if not regulation_name:
+                raise forms.ValidationError({'regulation_name': 'Назва регламенту обов\'язкова при введенні сервісів'})
+            
+            cleaned_data['service_plan'] = {
+                "regulation_name": regulation_name,
+                "current_mileage_km": mileage,
+                "services": services_json
+            }
+        elif not cleaned_data.get('service_plan'):
+            # Якщо немає ні service_plan, ні services_json - помилка
+            raise forms.ValidationError({'services_json': 'Додайте хоча б один сервіс'})
+        
+        return cleaned_data

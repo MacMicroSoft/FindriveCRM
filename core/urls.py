@@ -22,4 +22,5 @@ urlpatterns = [
     path("outlay/", view.OutlayView.as_view(), name="outlay"),
     path("outlay/<uuid:pk>/", view.OutlatDetailView.as_view(), name="outlay_detail"),
     path("outlay/<uuid:pk>/delete", view.OutlayDeleteView.as_view(), name="outlay_delete"),
+    path("car-service-plan/create/", view.CarServiceCreate.as_view(), name="car-service-plan-create"),
 ]

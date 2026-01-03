@@ -9,7 +9,7 @@ import pymupdf
 from pathlib import Path
 import re
 
-from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto
+from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto, CarServiceState
 
 logger = logging.getLogger(__name__)
 
@@ -623,3 +623,89 @@ class PDFCore:
                             break
 
         return self.__data
+
+
+def create_car_service_plan(plan_schema: dict, current_mileage: int) -> list:
+    services = plan_schema.get("services")
+
+    if not services:
+        raise ValueError("No services found in schema")
+
+    result = []
+
+    for service in services:
+        service = service.copy()
+
+        last_service = service.get("last_service_km", 0)
+        interval = service.get("interval_km", 0)
+
+        if last_service == 0:
+            service["status"] = "UNKNOWN"
+            service["next_service"] = None
+            result.append(service)
+            continue
+
+        next_service = last_service + interval
+        service["next_service"] = next_service
+
+        result.append(service)
+
+    return result
+
+def save_or_update_car_service_state(car, service_plan: dict, mileage: int) -> CarServiceState:
+    """Зберегти або оновити CarServiceState з розрахованими сервісами"""
+    try:
+        calculated_services = create_car_service_plan(
+            plan_schema=service_plan,
+            current_mileage=mileage,
+        )
+    except ValueError as exc:
+        raise ValueError(str(exc))
+    
+    service_plan["services"] = calculated_services
+    
+    try:
+        car_service_state = CarServiceState.objects.get(car=car)
+        car_service_state.service_plan = service_plan
+        car_service_state.mileage = mileage
+        car_service_state.save()
+    except CarServiceState.DoesNotExist:
+        car_service_state = CarServiceState.objects.create(
+            car=car,
+            service_plan=service_plan,
+            mileage=mileage
+        )
+    
+    return car_service_state
+
+
+@transaction.atomic
+def recalculate_car_service_plan(car_id, new_mileage: int):
+    schema=(CarServiceState.objects
+    .select_for_update()
+    .select_related("car")
+    .get(car_id=car_id)
+)   
+    mileage_diff = new_mileage - schema.mileage
+    
+    if mileage_diff <= 0:
+        return schema.service_plan
+
+    services = schema.service_plan.get("services", [])
+    updated_services = []
+
+    for service in services:
+        service = service.copy()
+
+        next_service = service.get("next_service")
+
+        if next_service is not None:
+            service["next_service"] = max(0, next_service - mileage_diff)
+
+        updated_services.append(service)
+
+    schema.service_plan["services"] = updated_services
+    schema.mileage = new_mileage
+    schema.save(update_fields=["service_plan", "mileage", "updated_at"])
+
+    return updated_services

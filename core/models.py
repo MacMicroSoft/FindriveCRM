@@ -350,10 +350,42 @@ class Invoice(AbstractTimeStampModel):
 
 class Notifications(AbstractTimeStampModel):
     uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-
     message = models.TextField()
     message_type = models.CharField(max_length=55)
     send_at = models.DateTimeField()
     delivered_at = models.DateTimeField()
 
     is_sended = models.BooleanField(default=False)
+
+class NotificationService(models.Model):
+    """For sending and control service event status"""
+    pass
+
+class MillageHistory(models.Model):
+    """Millage history for future metrics"""
+    car=models.ForeignKey(Car, on_delete=models.CASCADE)
+    millage=models.IntegerField()
+    created_at=models.DateTimeField(auto_now=True)
+
+class ServiceEventSchema(models.Model):
+    """Schema for calc future car service"""
+    schema_name=models.CharField(max_length=255)
+    schema=models.JSONField()
+    created_at=models.DateTimeField(auto_now=True)
+    is_default=models.BooleanField(default=False)
+
+class ServiceEvent(models.Model):
+    """Model for monitoring service history"""
+    car = models.ForeignKey(Car, on_delete=models.CASCADE)
+    service_type = models.CharField(max_length=50)
+    mileage_km = models.PositiveIntegerField()
+    date = models.DateField()
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class CarServiceState(models.Model):
+    """Save info about car service"""
+    car = models.OneToOneField(Car, on_delete=models.CASCADE)
+    service_plan = models.JSONField()
+    mileage=models.PositiveBigIntegerField()
+    updated_at = models.DateTimeField(auto_now=True)
