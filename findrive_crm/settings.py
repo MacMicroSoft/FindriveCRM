@@ -115,15 +115,6 @@ EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 WSGI_APPLICATION = "findrive_crm.wsgi.application"
 ASGI_APPLICATION = "findrive_crm.asgi.application"
 
-# Celery Configuration
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TASK_ALWAYS_EAGER = False  # Важливо: має бути False для роботи з брокером
-CELERY_TASK_EAGER_PROPAGATES = True
-
 
 CHANNEL_LAYERS = {
     "default": {
