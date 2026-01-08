@@ -1,0 +1,846 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Додати нове авто{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h1 style="color: #111827; font-size: 1.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem; margin: 0; flex-wrap: wrap;">
+            <svg style="width: 2rem; height: 2rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            <span>Додати нове авто</span>
+        </h1>
+        <a href="{% url 'cars' %}" style="color: #6b7280; text-decoration: none; font-size: 0.875rem; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem;">
+            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Назад до списку
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <style>
+        .form-container {
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        .form-section {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.25rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .required {
+            color: #ef4444;
+        }
+        
+        .form-input,
+        .border_input,
+        input[type="text"],
+        input[type="number"],
+        input[type="email"],
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-size: 0.9375rem;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .form-input:focus,
+        .border_input:focus,
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="email"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .form-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        /* Photo Upload Styles */
+        .photo-upload-section {
+            margin-top: 1rem;
+        }
+        
+        .photo-upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 0.75rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f9fafb;
+        }
+        
+        .photo-upload-area:hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        
+        .photo-upload-area.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        
+        .photo-upload-icon {
+            width: 3rem;
+            height: 3rem;
+            color: #9ca3af;
+            margin: 0 auto 1rem;
+        }
+        
+        .photo-upload-title {
+            display: block;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .photo-upload-hint {
+            display: block;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .photo-preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .photo-preview-item {
+            position: relative;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 2px solid #e5e7eb;
+            aspect-ratio: 1;
+        }
+        
+        .photo-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-preview-remove {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        
+        .photo-preview-remove:hover {
+            background: rgba(185, 28, 28, 1);
+            transform: scale(1.1);
+        }
+        
+        /* Owner Section */
+        .owner-select-section {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+        
+        .owner-select-section > div {
+            flex: 1;
+        }
+        
+        .btn-create-owner {
+            padding: 0.75rem 1.5rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            height: fit-content;
+            align-self: flex-end;
+        }
+        
+        .btn-create-owner:hover {
+            background: #059669;
+        }
+        
+        .btn-create-owner svg {
+            flex-shrink: 0;
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        .owner-create-form {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .owner-create-form.active {
+            display: block;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        @media (max-width: 768px) {
+            .form-container {
+                padding: 0 0.75rem;
+            }
+            
+            .form-section {
+                padding: 1.5rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .owner-select-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-actions {
+                flex-direction: column-reverse;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <div class="form-container">
+        <form method="POST" action="{% url 'add_car_ajax' %}" id="addCarForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Основна інформація -->
+            <div class="form-section">
+                <h2 class="form-section-title">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Основна інформація
+                </h2>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="{{ form.vin_code.id_for_label }}" class="form-label">
+                            VIN код <span class="required">*</span>
+                        </label>
+                        {{ form.vin_code }}
+                        {% if form.vin_code.errors %}
+                            <span class="form-error">{{ form.vin_code.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.license_plate.id_for_label }}" class="form-label">
+                            Номерний знак <span class="required">*</span>
+                        </label>
+                        {{ form.license_plate }}
+                        {% if form.license_plate.errors %}
+                            <span class="form-error">{{ form.license_plate.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.mark.id_for_label }}" class="form-label">
+                            Марка <span class="required">*</span>
+                        </label>
+                        {{ form.mark }}
+                        {% if form.mark.errors %}
+                            <span class="form-error">{{ form.mark.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.model.id_for_label }}" class="form-label">
+                            Модель <span class="required">*</span>
+                        </label>
+                        {{ form.model }}
+                        {% if form.model.errors %}
+                            <span class="form-error">{{ form.model.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.year.id_for_label }}" class="form-label">
+                            Рік <span class="required">*</span>
+                        </label>
+                        {{ form.year }}
+                        {% if form.year.errors %}
+                            <span class="form-error">{{ form.year.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.mileage.id_for_label }}" class="form-label">
+                            Пробіг (км) <span class="required">*</span>
+                        </label>
+                        {{ form.mileage }}
+                        {% if form.mileage.errors %}
+                            <span class="form-error">{{ form.mileage.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.color.id_for_label }}" class="form-label">
+                            Колір <span class="required">*</span>
+                        </label>
+                        {{ form.color }}
+                        {% if form.color.errors %}
+                            <span class="form-error">{{ form.color.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.fuel_type.id_for_label }}" class="form-label">
+                            Тип палива
+                        </label>
+                        {{ form.fuel_type }}
+                        {% if form.fuel_type.errors %}
+                            <span class="form-error">{{ form.fuel_type.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.drive_type.id_for_label }}" class="form-label">
+                            Привід
+                        </label>
+                        {{ form.drive_type }}
+                        {% if form.drive_type.errors %}
+                            <span class="form-error">{{ form.drive_type.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">
+                            Статус
+                        </label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <span class="form-error">{{ form.status.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Власник -->
+            <div class="form-section">
+                <h2 class="form-section-title">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    Власник
+                </h2>
+                
+                <div class="owner-select-section">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="{{ form.owner.id_for_label }}" class="form-label">
+                            Оберіть власника
+                        </label>
+                        {{ form.owner }}
+                        {% if form.owner.errors %}
+                            <span class="form-error">{{ form.owner.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                    <button type="button" id="createOwnerBtn" class="btn-create-owner">
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Створити нового
+                    </button>
+                </div>
+                
+                <div id="ownerCreateForm" class="owner-create-form">
+                    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #111827;">Новий власник</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="owner_first_name" class="form-label">
+                                Ім'я <span class="required">*</span>
+                            </label>
+                            <input type="text" id="owner_first_name" name="owner_first_name" class="form-input" placeholder="Ім'я">
+                        </div>
+                        <div class="form-group">
+                            <label for="owner_last_name" class="form-label">
+                                Прізвище <span class="required">*</span>
+                            </label>
+                            <input type="text" id="owner_last_name" name="owner_last_name" class="form-input" placeholder="Прізвище">
+                        </div>
+                        <div class="form-group">
+                            <label for="owner_email" class="form-label">
+                                Email <span class="required">*</span>
+                            </label>
+                            <input type="email" id="owner_email" name="owner_email" class="form-input" placeholder="email@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="owner_phone" class="form-label">
+                                Телефон
+                            </label>
+                            <input type="text" id="owner_phone" name="owner_phone" class="form-input" placeholder="+48...">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                        <button type="button" id="saveOwnerBtn" class="btn btn-primary" style="padding: 0.625rem 1.25rem;">
+                            Зберегти власника
+                        </button>
+                        <button type="button" id="cancelOwnerBtn" class="btn btn-secondary" style="padding: 0.625rem 1.25rem;">
+                            Скасувати
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Фото автомобіля -->
+            <div class="form-section">
+                <h2 class="form-section-title">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #8b5cf6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    Фото автомобіля
+                </h2>
+                
+                <div class="photo-upload-section">
+                    <input type="file" name="photos" id="id_photos" accept="image/*" multiple style="display: none;">
+                    
+                    <div class="photo-upload-area" id="photoUploadArea">
+                        <svg class="photo-upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="photo-upload-title" id="photoUploadTitle">Натисніть для завантаження фото</span>
+                        <span class="photo-upload-hint">Можна вибрати від 1 до 3 фото (JPG, PNG, до 5MB кожне)</span>
+                    </div>
+                    
+                    <div id="photosPreview" class="photo-preview-container" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Дії -->
+            <div class="form-actions">
+                <a href="{% url 'cars' %}" class="btn btn-secondary">Скасувати</a>
+                <button type="submit" id="submitBtn" class="btn btn-primary">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Створити автомобіль
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Глобальна змінна для зберігання вибраних файлів
+        let selectedFiles = [];
+        let createdOwnerId = null;
+        
+        // Ініціалізація завантаження фото
+        function initPhotoUpload() {
+            const photosInput = document.getElementById('id_photos');
+            const photoUploadArea = document.getElementById('photoUploadArea');
+            const photosPreview = document.getElementById('photosPreview');
+            const photoUploadTitle = document.getElementById('photoUploadTitle');
+            
+            if (!photosInput || !photoUploadArea || !photosPreview) return;
+            
+            // Click to upload
+            photoUploadArea.addEventListener('click', () => {
+                photosInput.click();
+            });
+            
+            // File change
+            photosInput.addEventListener('change', (e) => {
+                const newFiles = Array.from(e.target.files || []);
+                
+                if (newFiles.length === 0) return;
+                
+                // Перевірити розмір файлів
+                const invalidFiles = newFiles.filter(f => f.size > 5 * 1024 * 1024);
+                if (invalidFiles.length > 0) {
+                    alert('Деякі файли перевищують 5MB. Будь ласка, виберіть менші файли.');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // Додати нові файли до існуючих
+                newFiles.forEach(file => {
+                    const exists = selectedFiles.some(f => 
+                        f.name === file.name && 
+                        f.size === file.size && 
+                        f.lastModified === file.lastModified
+                    );
+                    if (!exists && selectedFiles.length < 3) {
+                        selectedFiles.push(file);
+                    }
+                });
+                
+                // Обмежити до 3 файлів
+                if (selectedFiles.length > 3) {
+                    selectedFiles = selectedFiles.slice(0, 3);
+                    alert('Можна вибрати максимум 3 фото');
+                }
+                
+                // Оновити input files
+                try {
+                    const dataTransfer = new DataTransfer();
+                    selectedFiles.forEach(file => dataTransfer.items.add(file));
+                    photosInput.files = dataTransfer.files;
+                } catch (err) {
+                    console.warn('DataTransfer not supported');
+                }
+                
+                e.target.value = '';
+                updatePhotoPreview();
+                updateUploadArea();
+            });
+            
+            function updatePhotoPreview() {
+                photosPreview.innerHTML = '';
+                
+                if (selectedFiles.length === 0) {
+                    photosPreview.style.display = 'none';
+                    return;
+                }
+                
+                photosPreview.style.display = 'grid';
+                
+                selectedFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const item = document.createElement('div');
+                        item.className = 'photo-preview-item';
+                        item.innerHTML = `
+                            <img src="${e.target.result}" alt="${file.name}">
+                            <button type="button" class="photo-preview-remove" onclick="removePhoto(${index})" aria-label="Видалити">
+                                ×
+                            </button>
+                        `;
+                        photosPreview.appendChild(item);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            function updateUploadArea() {
+                if (selectedFiles.length > 0) {
+                    photoUploadArea.classList.add('active');
+                    photoUploadTitle.textContent = `Вибрано: ${selectedFiles.length} фото`;
+                } else {
+                    photoUploadArea.classList.remove('active');
+                    photoUploadTitle.textContent = 'Натисніть для завантаження фото';
+                }
+            }
+            
+            window.removePhoto = function(index) {
+                if (index >= 0 && index < selectedFiles.length) {
+                    selectedFiles.splice(index, 1);
+                    
+                    try {
+                        const dataTransfer = new DataTransfer();
+                        selectedFiles.forEach(file => dataTransfer.items.add(file));
+                        photosInput.files = dataTransfer.files;
+                    } catch (err) {
+                        photosInput.value = '';
+                    }
+                    
+                    updatePhotoPreview();
+                    updateUploadArea();
+                }
+            };
+        }
+        
+        // Ініціалізація створення власника
+        function initOwnerCreation() {
+            const createOwnerBtn = document.getElementById('createOwnerBtn');
+            const ownerCreateForm = document.getElementById('ownerCreateForm');
+            const saveOwnerBtn = document.getElementById('saveOwnerBtn');
+            const cancelOwnerBtn = document.getElementById('cancelOwnerBtn');
+            const ownerSelect = document.getElementById('id_owner');
+            
+            if (!createOwnerBtn || !ownerCreateForm) return;
+            
+            createOwnerBtn.addEventListener('click', () => {
+                ownerCreateForm.classList.add('active');
+                createOwnerBtn.style.display = 'none';
+            });
+            
+            cancelOwnerBtn?.addEventListener('click', () => {
+                ownerCreateForm.classList.remove('active');
+                createOwnerBtn.style.display = 'block';
+                // Очистити поля
+                document.getElementById('owner_first_name').value = '';
+                document.getElementById('owner_last_name').value = '';
+                document.getElementById('owner_email').value = '';
+                document.getElementById('owner_phone').value = '';
+            });
+            
+            saveOwnerBtn?.addEventListener('click', async () => {
+                const firstName = document.getElementById('owner_first_name').value.trim();
+                const lastName = document.getElementById('owner_last_name').value.trim();
+                const email = document.getElementById('owner_email').value.trim();
+                const phone = document.getElementById('owner_phone').value.trim();
+                
+                if (!firstName || !lastName || !email) {
+                    alert('Заповніть обов\'язкові поля: Ім\'я, Прізвище, Email');
+                    return;
+                }
+                
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                // Показати завантаження
+                saveOwnerBtn.disabled = true;
+                const originalText = saveOwnerBtn.innerHTML;
+                saveOwnerBtn.innerHTML = 'Збереження...';
+                
+                try {
+                    const response = await fetch('{% url "owner-create" %}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            first_name: firstName,
+                            last_name: lastName,
+                            email: email,
+                            phone: phone || '',
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'ok') {
+                        createdOwnerId = data.id;
+                        
+                        // Додати нового власника до select
+                        const option = document.createElement('option');
+                        option.value = data.id;
+                        option.textContent = `${firstName} ${lastName}`;
+                        option.selected = true;
+                        ownerSelect.appendChild(option);
+                        
+                        // Приховати форму створення
+                        ownerCreateForm.classList.remove('active');
+                        createOwnerBtn.style.display = 'block';
+                        
+                        // Очистити поля
+                        document.getElementById('owner_first_name').value = '';
+                        document.getElementById('owner_last_name').value = '';
+                        document.getElementById('owner_email').value = '';
+                        document.getElementById('owner_phone').value = '';
+                        
+                        // Показати успіх
+                        const successMsg = document.createElement('div');
+                        successMsg.style.cssText = 'background: #10b981; color: white; padding: 0.75rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.875rem;';
+                        successMsg.textContent = '✓ Власника успішно створено!';
+                        ownerCreateForm.parentElement.insertBefore(successMsg, ownerCreateForm);
+                        setTimeout(() => successMsg.remove(), 3000);
+                    } else {
+                        // Показати помилки
+                        let errorMsg = 'Помилка при створенні власника:\n';
+                        Object.keys(data.errors || {}).forEach(field => {
+                            errorMsg += `${field}: ${Array.isArray(data.errors[field]) ? data.errors[field][0] : data.errors[field]}\n`;
+                        });
+                        alert(errorMsg);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Помилка при створенні власника: ' + error.message);
+                } finally {
+                    saveOwnerBtn.disabled = false;
+                    saveOwnerBtn.innerHTML = originalText;
+                }
+            });
+        }
+        
+        // Обробка відправки форми
+        document.getElementById('addCarForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const form = e.target;
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<svg style="width: 1rem; height: 1rem; animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Створення...';
+            
+            const formData = new FormData();
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
+            // Додати всі поля форми
+            const formFields = ['vin_code', 'license_plate', 'mark', 'model', 'year', 
+                              'mileage', 'color', 'fuel_type', 'status', 'drive_type', 'owner'];
+            
+            formFields.forEach(fieldName => {
+                const field = form.querySelector(`[name="${fieldName}"]`);
+                if (field) {
+                    formData.append(fieldName, field.value || '');
+                }
+            });
+            
+            // Додати фото
+            if (selectedFiles && selectedFiles.length > 0) {
+                selectedFiles.forEach((file) => {
+                    if (file instanceof File) {
+                        formData.append('photos', file, file.name);
+                    }
+                });
+            }
+            
+            try {
+                const response = await fetch('{% url "add_car_ajax" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    window.location.href = `/core/cars/${data.id}/`;
+                } else {
+                    // Показати помилки
+                    Object.keys(data.errors || {}).forEach(fieldName => {
+                        const field = form.querySelector(`[name="${fieldName}"]`);
+                        if (field) {
+                            field.style.borderColor = '#ef4444';
+                            const error = document.createElement('span');
+                            error.className = 'form-error';
+                            error.textContent = Array.isArray(data.errors[fieldName]) 
+                                ? data.errors[fieldName][0] 
+                                : data.errors[fieldName];
+                            field.closest('.form-group')?.appendChild(error);
+                        }
+                    });
+                    
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Помилка при створенні автомобіля');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+        
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', () => {
+            initPhotoUpload();
+            initOwnerCreation();
+        });
+    </script>
+{% endblock %}
+

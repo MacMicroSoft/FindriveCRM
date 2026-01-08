@@ -932,6 +932,7 @@
     }
     
     // Photo upload
+    // Глобальна змінна для зберігання вибраних файлів
     let selectedFiles = [];
     
     function initPhotoUpload() {
@@ -948,15 +949,77 @@
         
         // File change
         photosInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
+            const newFiles = Array.from(e.target.files || []);
             
-            if (files.length > 3) {
-                alert('Можна вибрати максимум 3 фото');
-                e.target.value = '';
-                return;
+            if (newFiles.length === 0) {
+                return; // Нічого не вибрано
             }
             
-            selectedFiles = files;
+            console.log(`Selected ${newFiles.length} new file(s), current selectedFiles: ${selectedFiles.length}`);
+            
+            // Перевірити загальну кількість після додавання
+            const totalAfterAdd = selectedFiles.length + newFiles.length;
+            
+            if (totalAfterAdd > 3) {
+                // Обчислити скільки можна додати
+                const canAdd = 3 - selectedFiles.length;
+                if (canAdd > 0) {
+                    // Додати тільки те, що можна
+                    const filesToAdd = newFiles.slice(0, canAdd);
+                    filesToAdd.forEach(file => {
+                        const exists = selectedFiles.some(f => 
+                            f.name === file.name && 
+                            f.size === file.size && 
+                            f.lastModified === file.lastModified
+                        );
+                        if (!exists) {
+                            selectedFiles.push(file);
+                            console.log(`Added file: ${file.name}`);
+                        }
+                    });
+                    if (newFiles.length > canAdd) {
+                        alert(`Можна вибрати максимум 3 фото. Додано ${canAdd} з ${newFiles.length}`);
+                    }
+                } else {
+                    alert('Вже вибрано максимум 3 фото. Спочатку видаліть деякі фото.');
+                    e.target.value = ''; // Очистити input
+                    return;
+                }
+            } else {
+                // Додати всі нові файли
+                newFiles.forEach(file => {
+                    const exists = selectedFiles.some(f => 
+                        f.name === file.name && 
+                        f.size === file.size && 
+                        f.lastModified === file.lastModified
+                    );
+                    if (!exists) {
+                        selectedFiles.push(file);
+                        console.log(`Added file: ${file.name}`);
+                    } else {
+                        console.log(`File already exists: ${file.name}`);
+                    }
+                });
+            }
+            
+            // Оновити input files для сумісності (важливо для деяких браузерів)
+            try {
+                const dataTransfer = new DataTransfer();
+                selectedFiles.forEach(file => {
+                    dataTransfer.items.add(file);
+                });
+                photosInput.files = dataTransfer.files;
+                console.log(`Updated input.files to ${photosInput.files.length} file(s)`);
+            } catch (err) {
+                console.warn('DataTransfer not supported, using selectedFiles array:', err);
+                // На деяких пристроях DataTransfer може не працювати
+                // В такому випадку використовуємо тільки selectedFiles
+            }
+            
+            // Очистити value input для можливості повторного вибору того ж файлу
+            // (якщо користувач випадково закрив діалог і хоче вибрати знову)
+            e.target.value = '';
+            
             updatePhotoPreview();
             updateUploadArea();
         });
@@ -1005,19 +1068,43 @@
         }
         
         window.removePhoto = function(index) {
-            selectedFiles.splice(index, 1);
-            
-            const dataTransfer = new DataTransfer();
-            selectedFiles.forEach(file => dataTransfer.items.add(file));
-            photosInput.files = dataTransfer.files;
-            
-            updatePhotoPreview();
-            updateUploadArea();
+            if (index >= 0 && index < selectedFiles.length) {
+                const removedFile = selectedFiles[index];
+                selectedFiles.splice(index, 1);
+                console.log(`Removed file: ${removedFile.name}, remaining: ${selectedFiles.length}`);
+                
+                // Оновити input files для сумісності
+                try {
+                    const dataTransfer = new DataTransfer();
+                    selectedFiles.forEach(file => {
+                        dataTransfer.items.add(file);
+                    });
+                    photosInput.files = dataTransfer.files;
+                    console.log(`Updated input.files to ${photosInput.files.length} file(s) after removal`);
+                } catch (err) {
+                    // Якщо DataTransfer не підтримується, просто очистимо input
+                    photosInput.value = '';
+                    console.warn('DataTransfer not supported, cleared input:', err);
+                }
+                
+                updatePhotoPreview();
+                updateUploadArea();
+            }
         };
         
         function resetPhotoUpload() {
             selectedFiles = [];
-            photosInput.value = '';
+            if (photosInput) {
+                photosInput.value = '';
+                // Очистити files через DataTransfer для сумісності
+                try {
+                    const dataTransfer = new DataTransfer();
+                    photosInput.files = dataTransfer.files;
+                } catch (err) {
+                    // Якщо DataTransfer не підтримується, просто очистимо value
+                    photosInput.value = '';
+                }
+            }
             updatePhotoPreview();
             updateUploadArea();
         }
@@ -1110,12 +1197,34 @@
                 }
             });
             
-            // Add photos
+            // Add photos - використовуємо selectedFiles для надійності
             const photosInput = form.querySelector('input[type="file"][name="photos"]');
-            if (photosInput && photosInput.files) {
+            
+            // Завжди використовуємо selectedFiles як джерело правди
+            // Це найнадійніший спосіб, оскільки ми контролюємо цей масив
+            if (selectedFiles && selectedFiles.length > 0) {
+                console.log(`=== Adding ${selectedFiles.length} photo(s) from selectedFiles array ===`);
+                selectedFiles.forEach((file, index) => {
+                    if (file instanceof File) {
+                        // Важливо: додавати кожен файл окремо з тим самим ім'ям 'photos'
+                        // Django обробляє це як список файлів
+                        formData.append('photos', file, file.name);
+                        console.log(`✓ Added photo ${index + 1}/${selectedFiles.length}: ${file.name}, ${file.size} bytes, type: ${file.type}`);
+                    } else {
+                        console.warn(`✗ Skipped item ${index + 1}: not a File object`, file);
+                    }
+                });
+                console.log(`=== Total photos in FormData: ${selectedFiles.length} ===`);
+            } 
+            // Fallback: якщо selectedFiles порожній (не повинно статися, але для безпеки)
+            else if (photosInput && photosInput.files && photosInput.files.length > 0) {
+                console.log(`⚠ Using fallback: Adding ${photosInput.files.length} photo(s) from input.files`);
                 for (let i = 0; i < photosInput.files.length; i++) {
-                    formData.append('photos', photosInput.files[i]);
+                    formData.append('photos', photosInput.files[i], photosInput.files[i].name);
+                    console.log(`Added photo ${i + 1}: ${photosInput.files[i].name}, ${photosInput.files[i].size} bytes`);
                 }
+            } else {
+                console.log('ℹ No photos to add');
             }
             
             // Debug: log FormData contents
@@ -1129,18 +1238,35 @@
             }
             
             try {
+                // Важливо: НЕ додавати Content-Type заголовок для FormData з файлами
+                // Браузер автоматично встановить правильний multipart/form-data з boundary
                 const response = await fetch("{% url 'add_car_ajax' %}", {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': csrfToken,
                         'X-Requested-With': 'XMLHttpRequest'
+                        // НЕ додавати 'Content-Type': 'multipart/form-data' - браузер зробить це автоматично
                     },
-                    body: formData
+                    body: formData,
+                    credentials: 'same-origin' // Для CSRF токенів
                 });
 
         const data = await response.json();
 
                 if (data.status === 'ok') {
+                    // Success - очистити фото після успішної відправки
+                    selectedFiles = [];
+                    const photosInput = document.getElementById('id_photos');
+                    if (photosInput) {
+                        photosInput.value = '';
+                        try {
+                            const dataTransfer = new DataTransfer();
+                            photosInput.files = dataTransfer.files;
+                        } catch (err) {
+                            // DataTransfer не підтримується
+                        }
+                    }
+                    
                     // Success
                     const modal = document.getElementById('addCarModal');
                     if (modal) modal.classList.remove('active');

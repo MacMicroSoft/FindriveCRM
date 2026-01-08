@@ -17,30 +17,64 @@
 
 {% block content %}
     <style>
+        /* Контейнер для всіх секцій з однаковою шириною */
+        .detail-container {
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
         .detail-card {
             background: white;
             border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            max-width: 42rem;
-            margin: 0 auto;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            transition: box-shadow 0.2s;
         }
-        .detail-row {
+        
+        .detail-card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .detail-card-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #f3f4f6;
             display: flex;
-            justify-content: space-between;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #f3f4f6;
+            align-items: center;
+            gap: 0.75rem;
         }
+        
+        .detail-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            align-items: center;
+        }
+        
         .detail-row:last-child {
             border-bottom: none;
         }
+        
         .detail-label {
             font-weight: 500;
             color: #374151;
+            font-size: 0.9375rem;
         }
+        
         .detail-value {
-            color: #6b7280;
+            color: #111827;
+            font-size: 0.9375rem;
+            word-break: break-word;
         }
+        
         .detail-actions {
             margin-top: 1.5rem;
             padding-top: 1.5rem;
@@ -50,23 +84,34 @@
             flex-wrap: wrap;
         }
         @media (max-width: 768px) {
+            .detail-container {
+                padding: 0 0.75rem;
+            }
+            
             .detail-card {
-                padding: 1.25rem !important;
-                margin: 0 !important;
+                padding: 1.5rem !important;
+                margin-bottom: 1.25rem !important;
             }
+            
             .detail-row {
-                flex-direction: column;
-                gap: 0.25rem;
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+                padding: 0.875rem 0;
             }
+            
             .detail-label {
                 font-size: 0.875rem;
+                margin-bottom: 0.25rem;
             }
+            
             .detail-value {
                 font-size: 0.875rem;
             }
+            
             .detail-actions {
                 flex-direction: column;
             }
+            
             .detail-actions a,
             .detail-actions button {
                 width: 100%;
@@ -74,16 +119,31 @@
         }
         @media (max-width: 640px) {
             .detail-card {
-                padding: 1rem !important;
+                padding: 1.25rem !important;
             }
+            
+            .detail-card-header {
+                font-size: 1.125rem;
+            }
+            
             h1 {
                 font-size: 1.25rem !important;
             }
         }
+        
         @media (max-width: 480px) {
-            .detail-card {
-                padding: 0.875rem !important;
+            .detail-container {
+                padding: 0 0.5rem;
             }
+            
+            .detail-card {
+                padding: 1rem !important;
+            }
+            
+            .detail-card-header {
+                font-size: 1rem;
+            }
+            
             h1 {
                 font-size: 1.125rem !important;
             }
@@ -140,11 +200,19 @@
         }
     </style>
 
-    <div class="detail-card">
-        <div class="detail-row">
-            <span class="detail-label">VIN код:</span>
-            <span class="detail-value">{{ object.vin_code }}</span>
-        </div>
+    <div class="detail-container">
+        <!-- Основна інформація про автомобіль -->
+        <div class="detail-card">
+            <h2 class="detail-card-header">
+                <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Основна інформація
+            </h2>
+            <div class="detail-row">
+                <span class="detail-label">VIN код:</span>
+                <span class="detail-value">{{ object.vin_code }}</span>
+            </div>
         <div class="detail-row">
             <span class="detail-label">Номерний знак:</span>
             <span class="detail-value">{{ object.license_plate }}</span>
@@ -194,14 +262,16 @@
         </div>
         {% endif %}
         {% if photos %}
-        <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
-            <span class="detail-label" style="margin-bottom: 0.5rem;">Фото:</span>
-            <div class="photos-grid">
-                {% for photo in photos %}
-                <div class="photo-item">
-                    <img src="{{ photo.photo.url }}" alt="Фото {{ forloop.counter }}">
+        <div class="detail-row" style="grid-template-columns: 1fr;">
+            <div>
+                <span class="detail-label" style="display: block; margin-bottom: 0.75rem;">Фото:</span>
+                <div class="photos-grid">
+                    {% for photo in photos %}
+                    <div class="photo-item">
+                        <img src="{{ photo.photo.url }}" alt="Фото {{ forloop.counter }}">
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
         </div>
         {% endif %}
@@ -212,22 +282,22 @@
     </div>
 
     <!-- Outlays Section -->
-    <div style="margin-top: 2rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+    <div class="detail-card">
+        <div class="detail-card-header" style="justify-content: space-between; margin-bottom: 1.5rem;">
             <div style="display: flex; align-items: center; gap: 1rem;">
-                <h2 style="color: #111827; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
-                    <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Витрати
-                </h2>
+                <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span>Витрати</span>
                 {% if outlays %}
-                <span style="background: #f3f4f6; color: #374151; font-size: 0.875rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 500;">
+                <span style="background: #dbeafe; color: #1e40af; font-size: 0.875rem; padding: 0.375rem 0.75rem; border-radius: 9999px; font-weight: 500;">
                     {{ outlays|length }} {% if outlays|length == 1 %}витрата{% else %}витрат{% endif %}
                 </span>
                 {% endif %}
             </div>
-            <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;">
+            <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem; font-weight: 500; transition: color 0.2s;" 
+               onmouseover="this.style.color='#1d4ed8'"
+               onmouseout="this.style.color='#2563eb'">
                 <span>Всі витрати</span>
                 <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -318,30 +388,66 @@
                 {% endfor %}
             </div>
             {% if outlays_total > 0 %}
-            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #374151; font-weight: 500;">Загальна сума витрат:</span>
-                <span style="color: #111827; font-size: 1.25rem; font-weight: 600;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 0.5rem; padding: 1.25rem; margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);">
+                <span style="color: white; font-weight: 500; font-size: 0.9375rem;">Загальна сума витрат:</span>
+                <span style="color: white; font-size: 1.5rem; font-weight: 700;">
                     {{ outlays_total|floatformat:2 }} PLN
                 </span>
             </div>
             {% endif %}
         {% else %}
-            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 3rem; text-align: center;">
+            <div style="background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 3rem; text-align: center;">
                 <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.75rem; opacity: 0.3; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
-                <p style="color: #6b7280; margin-bottom: 0.5rem;">Немає витрат для цього автомобіля</p>
-                <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem;">Додати витрату</a>
+                <p style="color: #6b7280; margin-bottom: 0.75rem; font-size: 0.9375rem;">Немає витрат для цього автомобіля</p>
+                <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500;">Додати витрату</a>
             </div>
         {% endif %}
     </div>
 
-    <div class="detail-card" style="margin-top: 2rem;">
-        <div class="detail-actions">
+    <!-- Схема сервісного плану -->
+    <div class="detail-card">
+        <h2 class="detail-card-header">
+            <svg style="width: 1.5rem; height: 1.5rem; color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            Схема сервісного плану
+        </h2>
+        {% if car_service_state %}
+            <div style="margin-bottom: 1rem;">
+                <div class="detail-row">
+                    <span class="detail-label">Пробіг при створенні:</span>
+                    <span class="detail-value">{{ car_service_state.mileage }} км</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Оновлено:</span>
+                    <span class="detail-value">{{ car_service_state.updated_at|date:"d.m.Y H:i" }}</span>
+                </div>
+            </div>
+            <div class="detail-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <a href="{% url 'car-service-plan-detail' car_pk=object.pk %}" class="btn btn-primary">Переглянути схему</a>
+                <button onclick="openDeleteServicePlanModal('{{ object.pk }}')" class="btn btn-danger">Видалити схему</button>
+            </div>
+        {% else %}
+            <div style="background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 3rem; text-align: center;">
+                <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.75rem; opacity: 0.3; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <p style="color: #6b7280; margin-bottom: 0.75rem; font-size: 0.9375rem;">Схема сервісного плану не створена</p>
+                <a href="{% url 'car-service-plan-create' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500;">Створити схему</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Дії -->
+    <div class="detail-card">
+        <div class="detail-actions" style="border-top: none; padding-top: 0; margin-top: 0;">
             <a href="{% url 'cars' %}" class="btn btn-secondary">Назад</a>
             <button onclick="openEditCarModal('{{ object.pk }}')" class="btn btn-primary">Редагувати</button>
             <button onclick="openDeleteCarModal('{{ object.pk }}', '{{ object.mark }} {{ object.model }} {{ object.year }}')" class="btn btn-danger">Видалити</button>
         </div>
+    </div>
     </div>
 
     <!-- Hidden form for editing -->
@@ -381,6 +487,46 @@
                 <button type="button" 
                         onclick="deleteOutlayAjax()"
                         id="deleteOutlayBtn"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#b91c1c'"
+                        onmouseout="this.style.background='#dc2626'">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Видалити
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Service Plan Modal -->
+    <div id="deleteServicePlanModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem;" onclick="closeDeleteServicePlanModal()">
+        <div style="background: white; border-radius: 0.75rem; max-width: 28rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);" onclick="event.stopPropagation()">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 3rem; height: 3rem; border-radius: 9999px; background: #fef2f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="color: #111827; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem 0;">Видалити схему сервісу?</h3>
+                    <p style="color: #6b7280; font-size: 0.875rem; margin: 0;" id="deleteServicePlanDescription">Цю дію неможливо скасувати.</p>
+                </div>
+            </div>
+            <p style="color: #374151; font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                Ви впевнені, що хочете видалити схему сервісного плану? Всі дані будуть безповоротно видалені.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" 
+                        onclick="closeDeleteServicePlanModal()"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f9fafb'"
+                        onmouseout="this.style.background='white'">
+                    Скасувати
+                </button>
+                <button type="button" 
+                        onclick="deleteServicePlanAjax()"
+                        id="deleteServicePlanBtn"
                         style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
                         onmouseover="this.style.background='#b91c1c'"
                         onmouseout="this.style.background='#dc2626'">
@@ -450,7 +596,6 @@
                         card.style.transform = 'translateX(-20px)';
                         setTimeout(() => {
                             card.remove();
-                            // Reload page to update totals
                             window.location.reload();
                         }, 300);
                     } else {
@@ -471,8 +616,68 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeDeleteOutlayModal();
+                closeDeleteServicePlanModal();
             }
         });
+        
+        // Service Plan Delete Modal Functions
+        let currentCarPk = null;
+        
+        function openDeleteServicePlanModal(carPk) {
+            currentCarPk = carPk;
+            const modal = document.getElementById('deleteServicePlanModal');
+            
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        function closeDeleteServicePlanModal() {
+            const modal = document.getElementById('deleteServicePlanModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            currentCarPk = null;
+        }
+        
+        function deleteServicePlanAjax() {
+            if (!currentCarPk) return;
+            
+            const btn = document.getElementById('deleteServicePlanBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<svg style="width: 1rem; height: 1rem; animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Видалення...';
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                             document.querySelector('meta[name=csrf-token]')?.content ||
+                             getCookie('csrftoken');
+            
+            fetch(`/core/cars/${currentCarPk}/service-plan/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: new FormData()
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Помилка при видаленні схеми сервісу');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Помилка при видаленні схеми сервісу: ' + error.message);
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        }
         
         // Helper function to get cookie
         function getCookie(name) {

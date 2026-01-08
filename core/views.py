@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
     DetailView, 
     CreateView, 
+    DeleteView,
     ListView, 
     View, 
     TemplateView
@@ -23,10 +24,13 @@ from .models import (
     CarPhoto, 
     Service, 
     Outlay, 
-    CarServiceState
+    CarServiceState,
+    ServiceEventSchema
 )
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.core.exceptions import ValidationError
 from .services import (
     create_car_with_photos, 
     update_car_with_photos, 
@@ -36,7 +40,9 @@ from .services import (
     get_outlay_form_data, 
     update_outlay,
     save_or_update_car_service_state,
+    create_service_events_from_services,
 )
+from .constants import DEFAULT_SERVICE_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +59,18 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         return context
     
 
-class AddCarView(View):
+class AddCarView(LoginRequiredMixin, View):
+    template_name = "car/create.html"
+    
+    def get(self, request):
+        form = AddCarForm()
+        owners = Owner.objects.all()
+        return render(request, self.template_name, {
+            'form': form,
+            'owners': owners,
+            'owner_form': OwnerForm()
+        })
+    
     def post(self, request):
         logger.info(f"Request method: {request.method}")
 
@@ -64,21 +81,33 @@ class AddCarView(View):
         )
 
         if result["success"]:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse(
+                    {
+                        "status": "ok",
+                        "id": str(result["car"].uuid),
+                        "message": result["message"],
+                    }
+                )
+            return redirect('car-detail', pk=result["car"].uuid)
+        
+        status_code = 500 if "__all__" in result["errors"] else 400
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse(
                 {
-                    "status": "ok",
-                    "id": str(result["car"].uuid),
-                    "message": result["message"],
-                }
+                    "status": "error",
+                    "errors": result["errors"],
+                },
+                status=status_code,
             )
-        status_code = 500 if "__all__" in result["errors"] else 400
-        return JsonResponse(
-            {
-                "status": "error",
-                "errors": result["errors"],
-            },
-            status=status_code,
-        )
+        form = AddCarForm(request.POST)
+        owners = Owner.objects.all()
+        return render(request, self.template_name, {
+            'form': form,
+            'owners': owners,
+            'owner_form': OwnerForm(),
+            'errors': result["errors"],
+        })
 
 
 class CarDetailView(LoginRequiredMixin, DetailView):
@@ -101,6 +130,12 @@ class CarDetailView(LoginRequiredMixin, DetailView):
             elif outlay.amount.price_per_item and outlay.amount.item_count:
                 total += float(outlay.amount.price_per_item) * int(outlay.amount.item_count)
         context["outlays_total"] = total
+        
+        # Get car service state if exists
+        try:
+            context["car_service_state"] = CarServiceState.objects.get(car=self.object)
+        except CarServiceState.DoesNotExist:
+            context["car_service_state"] = None
         
         return context
 
@@ -197,7 +232,12 @@ class OwnerListView(LoginRequiredMixin, ListView):
 
 class OwnerCreateView(LoginRequiredMixin, View):
     def post(self, request):
-        form = OwnerForm(request.POST)
+        if request.content_type == 'application/json':
+            import json
+            data = json.loads(request.body)
+            form = OwnerForm(data)
+        else:
+            form = OwnerForm(request.POST)
 
         if form.is_valid():
             owner = form.save()
@@ -623,7 +663,6 @@ class OutlayDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
         try:
             outlay = Outlay.objects.get(uuid=pk)
-            # Get car UUID before deleting (if any) - support both ManyToMany and ForeignKey
             car_uuid = None
             if hasattr(outlay, 'car') and outlay.car:
                 car_uuid = outlay.car.uuid
@@ -633,17 +672,14 @@ class OutlayDeleteView(LoginRequiredMixin, View):
             
             outlay.delete()
             
-            # Check if it's an AJAX request (no validation needed for delete)
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     "status": "ok",
                     "message": "Витрату успішно видалено",
                 })
             
-            # Check if request is from car detail page or if we have car UUID
             referer = request.META.get('HTTP_REFERER', '')
             if car_uuid or '/core/cars/' in referer:
-                # Extract car UUID from referer or use the one from outlay
                 if not car_uuid:
                     import re
                     match = re.search(r'/core/cars/([0-9a-f-]+)', referer)
@@ -679,34 +715,100 @@ class CarServiceCreate(LoginRequiredMixin, CreateView):
     def get(self, request):
         form = CarServiceForm()
         cars = Car.objects.all()
+        cars_mileage = {str(car.uuid): car.mileage for car in cars}
+        
+        # Використовуємо дефолтну схему з constants.py, якщо немає в БД
+        default_schema = ServiceEventSchema.objects.filter(
+            is_default=True
+        ).first()
+        
+        schema_data = default_schema.schema if default_schema else DEFAULT_SERVICE_SCHEMA
+        
         return render(request, self.template_name, {
             'form': form,
-            'cars': cars
+            'cars': cars,
+            'cars_mileage': cars_mileage,
+            'default_schema': schema_data
         })
 
-    def form_valid(self, form):
-        car = form.cleaned_data['car']
-        service_plan = form.cleaned_data['service_plan']
-        mileage = form.cleaned_data.get('mileage') or car.mileage
-        
+    def post(self, request, *args, **kwargs):
+        """Перевизначити post для обробки AJAX запитів"""
         try:
-            car_service_state = save_or_update_car_service_state(
-                car=car,
-                service_plan=service_plan,
-                mileage=mileage
-            )
-        except ValueError as exc:
+            form = self.form_class(request.POST)
+            if form.is_valid():
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
+        except Exception as e:
+            # Обробка будь-яких несподіваних помилок
+            logger.exception(f"Error in CarServiceCreate.post: {e}")
             return JsonResponse({
                 "status": "error",
-                "errors": {"__all__": [str(exc)]},
-            }, status=400)
-        
-        return JsonResponse({
-            "status": "ok",
-            "schema": car_service_state.service_plan,
-            "car_id": str(car.uuid),
-            "message": "Service plan schema calculated successfully!",
-        })
+                "errors": {"__all__": [f"Помилка сервера: {str(e)}"]},
+            }, status=500)
+    
+    def form_valid(self, form):
+        try:
+            car = form.cleaned_data['car']
+            service_plan = form.cleaned_data['service_plan']
+            services_json = form.cleaned_data.get('services_json')  # Отримуємо список сервісів напряму
+            mileage = form.cleaned_data.get('mileage') or car.mileage
+            
+            old_mileage = car.mileage
+            
+            mileage_updated = False
+            if mileage != car.mileage:
+                car.mileage = mileage
+                car.save(update_fields=['mileage'])
+                mileage_updated = True
+            
+            # Зберігаємо service_plan в CarServiceState (для зберігання схеми/шаблону)
+            try:
+                car_service_state = save_or_update_car_service_state(
+                    car=car,
+                    service_plan=service_plan,
+                    mileage=mileage
+                )
+            except (ValueError, Exception) as exc:
+                logger.exception(f"Error in save_or_update_car_service_state: {exc}")
+                return JsonResponse({
+                    "status": "error",
+                    "errors": {"__all__": [str(exc)]},
+                }, status=400)
+
+            # Створюємо ServiceEvent записи безпосередньо зі списку сервісів (без парсингу JSON)
+            if services_json:
+                try:
+                    created_events = create_service_events_from_services(
+                        car=car,
+                        services=services_json,
+                        mileage=mileage
+                    )
+                except (ValueError, Exception) as exc:
+                    logger.exception(f"Error in create_service_events_from_services: {exc}")
+                    return JsonResponse({
+                        "status": "error",
+                        "errors": {"__all__": [str(exc)]},
+                    }, status=400)
+
+            response_data = {
+                "status": "ok",
+                "schema": car_service_state.service_plan,
+                "car_id": str(car.uuid),
+                "message": "Service plan schema calculated successfully!",
+            }
+            
+            if mileage_updated:
+                response_data["warning"] = f"Пробіг автомобіля оновлено з {old_mileage} км на {mileage} км в базі даних."
+            
+            return JsonResponse(response_data)
+        except Exception as e:
+            # Обробка будь-яких несподіваних помилок
+            logger.exception(f"Error in CarServiceCreate.form_valid: {e}")
+            return JsonResponse({
+                "status": "error",
+                "errors": {"__all__": [f"Помилка сервера: {str(e)}"]},
+            }, status=500)
     
     def form_invalid(self, form):
         return JsonResponse({
@@ -714,3 +816,56 @@ class CarServiceCreate(LoginRequiredMixin, CreateView):
             "errors": form.errors,
         }, status=400)
 
+
+
+class CarServiceDeleteView(LoginRequiredMixin, View):
+    def post(self, request, car_pk):
+        try:
+            car_service_state = get_object_or_404(CarServiceState, car__pk=car_pk)
+            car_service_state.delete()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    "status": "success",
+                    "message": "Схему сервісного плану успішно видалено"
+                })
+            
+            return redirect('car-detail', pk=car_pk)
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    "status": "error",
+                    "message": str(e)
+                }, status=400)
+            raise
+
+
+class CarServiceDetailView(LoginRequiredMixin, DetailView):
+    model = CarServiceState
+    template_name = "car_service_plan/detail.html"
+    context_object_name = "car_service_plan"
+
+    def get_object(self):
+        car_pk = self.kwargs.get('car_pk')
+        return get_object_or_404(CarServiceState, car__pk=car_pk)
+
+
+class ServiceEventSchemaDefaultView(LoginRequiredMixin, TemplateView):
+    template_name = "service_event_schema/default_schema.html"
+    
+    def get_context_data(self, **kwargs):
+        
+        context = super().get_context_data(**kwargs)
+        default_schema = ServiceEventSchema.objects.filter(
+            is_default=True
+        ).first()
+        
+        if not default_schema:
+            default_schema = ServiceEventSchema.objects.create(
+                schema_name="Дефолтна схема обслуговування",
+                schema=DEFAULT_SERVICE_SCHEMA,
+                is_default=True
+            )
+        
+        context['service_event_schema'] = default_schema
+        return context

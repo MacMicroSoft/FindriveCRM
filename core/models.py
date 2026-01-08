@@ -50,7 +50,7 @@ class AbstractUserField(models.Model):
     first_name = models.CharField(max_length=32, verbose_name="Імя")
     last_name = models.CharField(max_length=32, verbose_name="Призвіще")
     email = models.EmailField(max_length=64, unique=True, verbose_name="Пошта")
-    phone = models.CharField(max_length=10, blank=True, null=True, verbose_name="Номер телефону")
+    phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="Номер телефону")
 
     class Meta:
         abstract = True
@@ -95,6 +95,15 @@ class Owner(AbstractTimeStampModel, AbstractUserField):
 class CarStatusChoice(models.TextChoices):
     ACTIVE = "Active", "Активне авто"
     AWAIT = "Await", "Очікуюче авто"
+
+
+class ServiceStatusChoice(models.TextChoices):
+    """Статуси для сервісних подій (для фліт менеджера)"""
+    UNKNOWN = "UNKNOWN", "Невідомо"
+    NORMAL = "NORMAL", "В Нормі"
+    IMPORTANT = "IMPORTANT", "Важливо"
+    CRITICAL = "CRITICAL", "Критично"
+    COMPLETED = "COMPLETED", "Виконано"
 
 
 class CarFuelTypeChoice(models.TextChoices):
@@ -367,6 +376,7 @@ class MillageHistory(models.Model):
     millage=models.IntegerField()
     created_at=models.DateTimeField(auto_now=True)
 
+
 class ServiceEventSchema(models.Model):
     """Schema for calc future car service"""
     schema_name=models.CharField(max_length=255)
@@ -379,9 +389,13 @@ class ServiceEvent(models.Model):
     car = models.ForeignKey(Car, on_delete=models.CASCADE)
     service_type = models.CharField(max_length=50)
     mileage_km = models.PositiveIntegerField()
+    next_service_km = models.PositiveIntegerField()
+    last_service_km = models.PositiveIntegerField()
+    interval_km = models.PositiveIntegerField()
     date = models.DateField()
-    comment = models.TextField(blank=True)
+    status = models.CharField(max_length=50)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
 
 class CarServiceState(models.Model):
     """Save info about car service"""
@@ -389,3 +403,14 @@ class CarServiceState(models.Model):
     service_plan = models.JSONField()
     mileage=models.PositiveBigIntegerField()
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class ServiceEventHistory(models.Model):
+    """History of service events"""
+    car = models.ForeignKey(Car, on_delete=models.CASCADE)
+    service_type = models.CharField(max_length=50)
+    mileage_km = models.PositiveIntegerField()
+    date = models.DateField()
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    

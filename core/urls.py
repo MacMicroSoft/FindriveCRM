@@ -6,6 +6,7 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/core/cars", permanent=False), name="core-index"),
     path("cars", view.DashboardView.as_view(), name="cars"),
     path("cars/create/", view.AddCarView.as_view(), name="add_car_ajax"),
+    path("cars/new/", view.AddCarView.as_view(), name="car-create"),
     path("cars/<uuid:pk>/", view.CarDetailView.as_view(), name="car-detail"),
     path("cars/update/<uuid:pk>/", view.CarUpdateView.as_view(), name="car-update"),
     path("cars/delete/<uuid:pk>/", view.CarDeleteView.as_view(), name="car-delete"),
@@ -23,4 +24,6 @@ urlpatterns = [
     path("outlay/<uuid:pk>/", view.OutlatDetailView.as_view(), name="outlay_detail"),
     path("outlay/<uuid:pk>/delete", view.OutlayDeleteView.as_view(), name="outlay_delete"),
     path("car-service-plan/create/", view.CarServiceCreate.as_view(), name="car-service-plan-create"),
+    path("cars/<uuid:car_pk>/service-plan/", view.CarServiceDetailView.as_view(), name="car-service-plan-detail"),
+    path("cars/<uuid:car_pk>/service-plan/delete/", view.CarServiceDeleteView.as_view(), name="car-service-plan-delete"),
 ]

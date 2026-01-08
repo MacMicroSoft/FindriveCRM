@@ -1,5 +1,6 @@
 import logging
 from typing import Any
+from datetime import date
 
 from django.db.models import F, Value, Case, When, CharField
 from django.db.models.functions import Concat
@@ -9,7 +10,7 @@ import pymupdf
 from pathlib import Path
 import re
 
-from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto, CarServiceState
+from .models import Owner, Car, Outlay, OutlayAmount, OutlayCategoryChoice, OutlayTypeChoice, CarStatusChoice, CarPhoto, CarServiceState, ServiceEvent
 
 logger = logging.getLogger(__name__)
 
@@ -585,7 +586,6 @@ class PDFCore:
                 while i < n:
                     line = blocks_sorted[i][4]
 
-                    # Get value
                     if isinstance(pattern_field, tuple):
                         field, pattern = pattern_field
                         field_data = self.get_text_data(field, pattern, line)
@@ -595,7 +595,6 @@ class PDFCore:
                             break
                         continue
 
-                    # Get few values in one line
                     if isinstance(pattern_field, list):
                         field_data = self.get_text_data(pattern_field, None, line)
                         i += 1
@@ -604,7 +603,6 @@ class PDFCore:
                             break
                         continue
 
-                    #Get Table
                     if isinstance(pattern_field, re.Pattern):
                         match = pattern_field.match(line)
                         i += 1
@@ -654,6 +652,12 @@ def create_car_service_plan(plan_schema: dict, current_mileage: int) -> list:
 
 def save_or_update_car_service_state(car, service_plan: dict, mileage: int) -> CarServiceState:
     """Зберегти або оновити CarServiceState з розрахованими сервісами"""
+    if mileage is None:
+        mileage=Car.objects.filter(car=car).only("mileage")
+
+    if mileage <= 0 or not mileage:
+        raise ValueError("Unexpected error with mileage absent")
+    
     try:
         calculated_services = create_car_service_plan(
             plan_schema=service_plan,
@@ -709,3 +713,125 @@ def recalculate_car_service_plan(car_id, new_mileage: int):
     schema.save(update_fields=["service_plan", "mileage", "updated_at"])
 
     return updated_services
+
+
+def create_service_events_from_services(car, services: list, mileage: int):
+    """
+    Створює ServiceEvent записи безпосередньо зі списку сервісів.
+    Враховує всі поля моделі ServiceEvent включаючи статуси.
+    
+    Args:
+        car: Car instance
+        services: список сервісів (dict з полями: key, name, interval_km, last_service_km)
+        mileage: поточний пробіг автомобіля
+    
+    Returns:
+        list: список створених ServiceEvent об'єктів
+    
+    Raises:
+        ValueError: якщо services порожній або інші помилки
+    """
+    if not services:
+        raise ValueError("Список сервісів не може бути порожнім")
+    
+    if not isinstance(services, list):
+        raise ValueError("services повинно бути списком")
+    
+    created_events = []
+    today = date.today()
+    
+    for service in services:
+        if not isinstance(service, dict):
+            continue
+        
+        # Отримуємо дані з сервісу
+        last_service_km = service.get("last_service_km", 0)
+        interval_km = service.get("interval_km", 0)
+        
+        # Визначаємо service_type
+        service_type = service.get("name", service.get("key", "Unknown Service"))
+        
+        # Обмежуємо довжину service_type до 50 символів (максимум для поля)
+        if len(service_type) > 50:
+            service_type = service_type[:47] + "..."
+        
+        # Обчислюємо next_service_km
+        if last_service_km > 0:
+            next_service_km = last_service_km + interval_km
+        else:
+            # Для невідомих сервісів встановлюємо next_service_km на основі поточного пробігу
+            next_service_km = mileage + interval_km if interval_km > 0 else mileage
+        
+        # Визначаємо статус на основі поточного пробігу та next_service_km
+        from .models import ServiceStatusChoice
+        
+        if last_service_km == 0:
+            status = ServiceStatusChoice.UNKNOWN
+            is_completed = False
+        else:
+            # Визначаємо статус на основі поточного пробігу
+            # Критично - якщо пробіг перевищив next_service_km більш ніж на 20%
+            # Важливо - якщо пробіг наближається до next_service_km (за 10% до або вже перевищив)
+            # В Нормі - якщо ще є час до наступного сервісу
+            if mileage >= next_service_km * 1.2:  # Перевищено більш ніж на 20%
+                status = ServiceStatusChoice.CRITICAL  # Критично
+            elif mileage >= next_service_km:  # Перевищено або досягнуто
+                status = ServiceStatusChoice.IMPORTANT  # Важливо
+            elif mileage > next_service_km - (interval_km * 0.1):  # За 10% до наступного сервісу
+                status = ServiceStatusChoice.IMPORTANT  # Важливо
+            else:
+                status = ServiceStatusChoice.NORMAL  # В Нормі
+            
+            is_completed = last_service_km > 0
+        
+        # Перевіряємо, чи не існує вже такий івент (щоб уникнути дублікатів)
+        # Використовуємо тільки поля, які точно існують в БД
+        existing_event = ServiceEvent.objects.filter(
+            car=car,
+            service_type=service_type,
+            last_service_km=last_service_km
+        ).first()
+        
+        if not existing_event:
+            event = ServiceEvent.objects.create(
+                car=car,
+                service_type=service_type,
+                mileage_km=mileage,  # Поточний пробіг автомобіля
+                next_service_km=next_service_km,
+                last_service_km=last_service_km,
+                interval_km=interval_km,
+                date=today,
+                status=status,
+                is_completed=is_completed
+            )
+            created_events.append(event)
+    
+    return created_events
+
+
+def parse_events_for_car_by_json(car, service_plan: dict, mileage: int):
+    """
+    Дістає всі івенти з JSON service_plan і додає їх в бд до відповідного авто.
+    Враховує всі поля моделі ServiceEvent включаючи статуси.
+    
+    Args:
+        car: Car instance
+        service_plan: dict з полем "services" (список сервісів з обчисленими next_service)
+        mileage: поточний пробіг автомобіля
+    
+    Returns:
+        list: список створених ServiceEvent об'єктів
+    
+    Raises:
+        ValueError: якщо service_plan не містить services або інші помилки
+    """
+    if not service_plan:
+        raise ValueError("service_plan не може бути порожнім")
+    
+    services = service_plan.get("services", [])
+    
+    if not services:
+        raise ValueError("service_plan не містить поле 'services' або воно порожнє")
+    
+    # Використовуємо нову функцію для створення івентів
+    return create_service_events_from_services(car, services, mileage)

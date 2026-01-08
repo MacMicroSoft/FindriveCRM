@@ -121,7 +121,7 @@ class OwnerForm(forms.ModelForm):
                 attrs={"class": "border_input w-full", "placeholder": "Прізвище"}
             ),
             "phone": forms.TextInput(
-                attrs={"class": "border_input w-full", "placeholder": "+48..."}
+                attrs={"class": "border_input w-full", "placeholder": "+48123456789"}
             ),
             "telegram_link": forms.TextInput(
                 attrs={"class": "border_input w-full", "placeholder": "@username"}
@@ -131,6 +131,43 @@ class OwnerForm(forms.ModelForm):
             ),
             "is_active_telegram": forms.CheckboxInput(attrs={"class": "h-4 w-4 text-blue-600"}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['is_active_telegram'].required = False
+        self.fields['telegram_link'].required = False
+    
+    def clean_phone(self):
+        import re
+        phone = self.cleaned_data.get('phone')
+        
+        if not phone or phone.strip() == '':
+            return phone  # Поле не обов'язкове, якщо порожнє - повертаємо як є
+        
+        phone = phone.strip()
+        
+        # Видалити всі пробіли, дефіси та інші символи для перевірки
+        phone_clean = re.sub(r'[\s\-\(\)]', '', phone)
+        
+        # Перевірити формат польського номера: +48XXXXXXXXX (9 цифр після +48)
+        # Або 48XXXXXXXXX (без +)
+        polish_phone_pattern = r'^(\+?48)(\d{9})$'
+        
+        match = re.match(polish_phone_pattern, phone_clean)
+        if not match:
+            raise forms.ValidationError(
+                'Номер телефону повинен бути у польському форматі: +48XXXXXXXXX '
+                '(9 цифр після +48). Наприклад: +48123456789'
+            )
+        
+        # Повернути у стандартному форматі +48XXXXXXXXX
+        formatted_phone = f"+48{match.group(2)}"
+        
+        # Перевірити довжину (якщо модель має max_length=10, це буде помилка)
+        if len(formatted_phone) > 15:
+            raise forms.ValidationError('Номер телефону занадто довгий')
+        
+        return formatted_phone
 
 
 class ServiceForm(forms.ModelForm):
@@ -352,10 +389,35 @@ class CarServiceForm(forms.ModelForm):
         if len(services) == 0:
             raise forms.ValidationError("Масив сервісів не може бути порожнім")
         
-        required_fields = ['key', 'name', 'interval_km', 'last_service_km']
+        required_fields = ['name', 'interval_km', 'last_service_km']
+        
         for i, service in enumerate(services):
             if not isinstance(service, dict):
                 raise forms.ValidationError(f"Сервіс {i+1} повинен бути об'єктом")
+            
+            # Генерувати key автоматично, якщо його немає
+            if 'key' not in service or not service.get('key'):
+                if 'name' in service and service.get('name'):
+                    # Проста транслітерація для генерації key
+                    name = service['name'].lower()
+                    # Базова транслітерація українських літер
+                    translit_map = {
+                        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
+                        'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'yi', 'й': 'y', 'к': 'k', 'л': 'l',
+                        'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                        'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ь': '', 'ю': 'yu',
+                        'я': 'ya'
+                    }
+                    for ukr, eng in translit_map.items():
+                        name = name.replace(ukr, eng)
+                    # Замінити всі не-латинські символи на підкреслення
+                    import re
+                    key = re.sub(r'[^a-z0-9_]', '_', name)
+                    key = re.sub(r'_+', '_', key).strip('_')
+                    service['key'] = key if key else f'service_{i+1}'
+                else:
+                    service['key'] = f'service_{i+1}'
+            
             for field in required_fields:
                 if field not in service:
                     raise forms.ValidationError(f"Сервіс {i+1} не містить поле '{field}'")
@@ -363,6 +425,18 @@ class CarServiceForm(forms.ModelForm):
                 raise forms.ValidationError(f"Сервіс {i+1}: interval_km повинен бути додатнім числом")
             if not isinstance(service.get('last_service_km'), (int, float)) or service.get('last_service_km') < 0:
                 raise forms.ValidationError(f"Сервіс {i+1}: last_service_km повинен бути невід'ємним числом")
+            
+            # Валідація статусу
+            if 'status' in service:
+                from .models import ServiceStatusChoice
+                valid_statuses = [choice[0] for choice in ServiceStatusChoice.choices]
+                if service['status'] not in valid_statuses:
+                    raise forms.ValidationError(
+                        f"Сервіс {i+1}: Невірний статус '{service['status']}'. Дозволені статуси: {', '.join(valid_statuses)}"
+                    )
+            
+            # Валідація: останній сервіс не може бути більший за пробіг
+            # (mileage буде перевірено в clean методі, де є доступ до нього)
         
         return services
     
@@ -378,6 +452,16 @@ class CarServiceForm(forms.ModelForm):
                 raise forms.ValidationError({'mileage': 'Пробіг обов\'язковий при введенні сервісів'})
             if not regulation_name:
                 raise forms.ValidationError({'regulation_name': 'Назва регламенту обов\'язкова при введенні сервісів'})
+            
+            # Додаткова валідація: останній сервіс не може бути більший за пробіг
+            for i, service in enumerate(services_json):
+                if not isinstance(service, dict):
+                    continue
+                last_service_km = service.get('last_service_km', 0)
+                if mileage and last_service_km > mileage:
+                    raise forms.ValidationError({
+                        'services_json': f'Сервіс {i+1}: Останній сервіс ({last_service_km} км) не може бути більший за поточний пробіг ({mileage} км)'
+                    })
             
             cleaned_data['service_plan'] = {
                 "regulation_name": regulation_name,
