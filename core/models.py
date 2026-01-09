@@ -3,6 +3,7 @@ from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, Permis
 import uuid
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+
 class CustomUserManager(BaseUserManager):
     def create_user(self, first_name, last_name, email, password, **kwargs):
         if not email:

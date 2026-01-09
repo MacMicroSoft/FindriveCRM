@@ -667,6 +667,17 @@ class ChatDetailView(LoginRequiredMixin, View):
         context = {"chat": get_chat_info(chat_id)}
         return render(request, self.template_name, context)
 
+from .analitics import AnalysManager 
+
+class AnaliticsView(LoginRequiredMixin, View):
+    template_name = ""
+
+    def get(self, request):
+        test_car = Car.objects.all().last()
+        t = AnalysManager(test_car)
+        t.test()
+        return JsonResponse({"ok": "ok"})
+
 
 # class NotificationsView(LoginRequiredMixin, TemplateView):
 #     template_name = "notifications.html"
