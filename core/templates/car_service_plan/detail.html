@@ -1,0 +1,117 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Схема сервісного плану{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0; flex-wrap: wrap;">
+            <span>Схема сервісного плану</span>
+        </h1>
+        <a href="{% url 'car-detail' pk=car_service_plan.car.pk %}" style="color: #6b7280; text-decoration: none; font-size: 0.875rem; white-space: nowrap;">← Назад до автомобіля</a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="detail-card" style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.5rem; max-width: 56rem; margin: 0 auto;">
+        <div style="margin-bottom: 1.5rem;">
+            <div class="detail-row" style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
+                <span class="detail-label" style="font-weight: 500; color: #374151;">Автомобіль:</span>
+                <span class="detail-value" style="color: #6b7280;">{{ car_service_plan.car.mark }} {{ car_service_plan.car.model }} {{ car_service_plan.car.year }}</span>
+            </div>
+            <div class="detail-row" style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
+                <span class="detail-label" style="font-weight: 500; color: #374151;">Пробіг при створенні:</span>
+                <span class="detail-value" style="color: #6b7280;">{{ car_service_plan.mileage }} км</span>
+            </div>
+            <div class="detail-row" style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
+                <span class="detail-label" style="font-weight: 500; color: #374151;">Оновлено:</span>
+                <span class="detail-value" style="color: #6b7280;">{{ car_service_plan.updated_at|date:"d.m.Y H:i" }}</span>
+            </div>
+        </div>
+
+        <h3 style="font-size: 1.125rem; font-weight: 600; color: #111827; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f3f4f6;">
+            Схема сервісів
+        </h3>
+
+        {% if car_service_plan.service_plan.regulation_name %}
+        <div style="margin-bottom: 1.5rem;">
+            <span class="detail-label" style="font-weight: 500; color: #374151;">Назва регламенту:</span>
+            <span class="detail-value" style="color: #6b7280; display: block; margin-top: 0.25rem;">{{ car_service_plan.service_plan.regulation_name }}</span>
+        </div>
+        {% endif %}
+
+        {% if car_service_plan.service_plan.services %}
+        <div style="margin-top: 1.5rem;">
+            <h4 style="font-size: 1rem; font-weight: 600; color: #374151; margin-bottom: 1rem;">Сервіси:</h4>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for service in car_service_plan.service_plan.services %}
+                <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                        <div style="flex: 1;">
+                            <h5 style="font-size: 0.9375rem; font-weight: 600; color: #111827; margin: 0 0 0.25rem 0;">{{ service.name }}</h5>
+                            {% if service.key %}
+                            <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Key: {{ service.key }}</p>
+                            {% endif %}
+                        </div>
+                        {% if service.status %}
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; 
+                            {% if service.status == 'CRITICAL' %}background: #fee2e2; color: #991b1b;
+                            {% elif service.status == 'IMPORTANT' %}background: #fef2f2; color: #dc2626;
+                            {% elif service.status == 'NORMAL' %}background: #d1fae5; color: #065f46;
+                            {% elif service.status == 'UNKNOWN' %}background: #f3f4f6; color: #374151;
+                            {% else %}background: #f3f4f6; color: #374151;{% endif %}">
+                            {% if service.status == 'CRITICAL' %}Критично
+                            {% elif service.status == 'IMPORTANT' %}Важливо
+                            {% elif service.status == 'NORMAL' %}В Нормі
+                            {% elif service.status == 'UNKNOWN' %}Невідомо
+                            {% else %}{{ service.status }}{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; font-size: 0.875rem;">
+                        {% if service.interval_km %}
+                        <div>
+                            <span style="color: #6b7280;">Інтервал:</span>
+                            <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ service.interval_km }} км</span>
+                        </div>
+                        {% endif %}
+                        {% if service.last_service_km %}
+                        <div>
+                            <span style="color: #6b7280;">Останній сервіс:</span>
+                            <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ service.last_service_km }} км</span>
+                        </div>
+                        {% endif %}
+                        {% if service.next_service %}
+                        <div>
+                            <span style="color: #6b7280;">Наступний сервіс:</span>
+                            <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ service.next_service }} км</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p style="color: #6b7280; text-align: center; padding: 2rem;">Немає сервісів у схемі</p>
+        {% endif %}
+
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; display: flex; gap: 0.75rem;">
+            <a href="{% url 'car-detail' pk=car_service_plan.car.pk %}" style="padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; text-decoration: none; display: inline-block;">Назад</a>
+        </div>
+    </div>
+
+    <style>
+        @media (max-width: 768px) {
+            .detail-card {
+                padding: 1.25rem !important;
+                margin: 0 !important;
+            }
+            .detail-row {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+        }
+    </style>
+{% endblock %}
+

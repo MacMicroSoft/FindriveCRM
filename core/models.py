@@ -50,7 +50,7 @@ class AbstractUserField(models.Model):
     first_name = models.CharField(max_length=32, verbose_name="Імя")
     last_name = models.CharField(max_length=32, verbose_name="Призвіще")
     email = models.EmailField(max_length=64, unique=True, verbose_name="Пошта")
-    phone = models.CharField(max_length=10, blank=True, null=True, verbose_name="Номер телефону")
+    phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="Номер телефону")
 
     class Meta:
         abstract = True
@@ -95,6 +95,15 @@ class Owner(AbstractTimeStampModel, AbstractUserField):
 class CarStatusChoice(models.TextChoices):
     ACTIVE = "Active", "Активне авто"
     AWAIT = "Await", "Очікуюче авто"
+
+
+class ServiceStatusChoice(models.TextChoices):
+    """Статуси для сервісних подій (для фліт менеджера)"""
+    UNKNOWN = "UNKNOWN", "Невідомо"
+    NORMAL = "NORMAL", "В Нормі"
+    IMPORTANT = "IMPORTANT", "Важливо"
+    CRITICAL = "CRITICAL", "Критично"
+    COMPLETED = "COMPLETED", "Виконано"
 
 
 class CarFuelTypeChoice(models.TextChoices):
@@ -342,18 +351,96 @@ class Invoice(AbstractTimeStampModel):
     name = models.CharField(max_length=55)
     file_path = models.CharField(max_length=255)
     invoice_data = models.JSONField(default=dict)
-    invoice_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    invoice_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_archived = models.BooleanField(default=False)
 
     cars = models.ManyToManyField(Car, related_name="invoices")
 
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Фактура"
+        verbose_name_plural = "Фактури"
+
+    def __str__(self):
+        return f"{self.name} - {self.created_at.strftime('%d.%m.%Y') if self.created_at else ''}"
+
+
+class InvoiceItem(AbstractTimeStampModel):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")
+    item_id = models.CharField(max_length=20, verbose_name="ID")
+    item_name = models.CharField(max_length=1000, verbose_name="Назва товару")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Кількість")
+    price_netto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ціна нетто")
+    price_netto2 = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Ціна нетто 2")
+    tax_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="ПДВ %")
+    tax_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Сума ПДВ")
+    price_brutto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ціна брутто")
+    current_car_vin = models.CharField(max_length=55, null=True, blank=True, verbose_name="VIN автомобіля")
+
+    class Meta:
+        ordering = ['item_id']
+        verbose_name = "Позиція фактури"
+        verbose_name_plural = "Позиції фактури"
+
+    def __str__(self):
+        return f"{self.item_id} - {self.item_name}"
+
 
 class Notifications(AbstractTimeStampModel):
     uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-
     message = models.TextField()
     message_type = models.CharField(max_length=55)
     send_at = models.DateTimeField()
     delivered_at = models.DateTimeField()
 
     is_sended = models.BooleanField(default=False)
+
+class NotificationService(models.Model):
+    """For sending and control service event status"""
+    pass
+
+class MillageHistory(models.Model):
+    """Millage history for future metrics"""
+    car=models.ForeignKey(Car, on_delete=models.CASCADE)
+    millage=models.IntegerField()
+    created_at=models.DateTimeField(auto_now=True)
+
+
+class ServiceEventSchema(models.Model):
+    """Schema for calc future car service"""
+    schema_name=models.CharField(max_length=255)
+    schema=models.JSONField()
+    created_at=models.DateTimeField(auto_now=True)
+    is_default=models.BooleanField(default=False)
+
+class ServiceEvent(models.Model):
+    """Model for monitoring service history"""
+    car = models.ForeignKey(Car, on_delete=models.CASCADE)
+    service_type = models.CharField(max_length=50)
+    mileage_km = models.PositiveIntegerField()
+    next_service_km = models.PositiveIntegerField()
+    last_service_km = models.PositiveIntegerField()
+    interval_km = models.PositiveIntegerField()
+    date = models.DateField()
+    status = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_completed = models.BooleanField(default=False)
+
+class CarServiceState(models.Model):
+    """Save info about car service"""
+    car = models.OneToOneField(Car, on_delete=models.CASCADE)
+    service_plan = models.JSONField()
+    mileage=models.PositiveBigIntegerField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class ServiceEventHistory(models.Model):
+    """History of service events"""
+    car = models.ForeignKey(Car, on_delete=models.CASCADE)
+    service_type = models.CharField(max_length=50)
+    mileage_km = models.PositiveIntegerField()
+    date = models.DateField()
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    

@@ -1,0 +1,1308 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Фактура: {{ invoice.name }}{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+            <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem;">{{ invoice.name }}</h1>
+            <p style="color: #6b7280; font-size: 0.875rem;">Створено: {{ invoice.created_at|date:"d.m.Y H:i" }}</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{% url 'invoice-list' %}" 
+               style="padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+               onmouseover="this.style.background='#f9fafb'"
+               onmouseout="this.style.background='white'">
+                ← Назад
+            </a>
+            <button type="button" 
+                    onclick="openDeleteInvoiceModal('{{ invoice.uuid }}', '{{ invoice.name }}')"
+                    style="padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+                    onmouseover="this.style.background='#b91c1c'"
+                    onmouseout="this.style.background='#dc2626'">
+                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                Видалити
+            </button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <style>
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .invoice-table thead {
+            background: #f9fafb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .invoice-table th {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        .invoice-table td {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8125rem;
+            color: #111827;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .invoice-table tbody tr:hover {
+            background: #f9fafb;
+        }
+        .invoice-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .editable-cell {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+        }
+        .editable-cell:hover {
+            background: #f3f4f6;
+        }
+        .validation-error {
+            background-color: #fee2e2 !important;
+            border: 2px solid #dc2626 !important;
+        }
+        .validation-error:hover {
+            background-color: #fecaca !important;
+        }
+        .total-validation-error {
+            background-color: #fee2e2;
+            border: 2px solid #dc2626;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        .total-validation-error p {
+            margin: 0.25rem 0;
+            color: #991b1b;
+            font-weight: 500;
+        }
+        .data-validity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .data-validity-badge.valid {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .data-validity-badge.invalid {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .invoice-validity-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .invoice-validity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .invoice-validity-badge.valid {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        .invoice-validity-badge.invalid {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .invoice-validity-badge.partial {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+        .table-scroll-container {
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+        }
+        .table-compact {
+            max-height: 140px !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+        }
+        .table-compact .invoice-table th,
+        .table-compact .invoice-table td {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        .table-scroll-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .table-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .table-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        .editable-cell input {
+            width: 100%;
+            padding: 0.25rem 0.5rem;
+            border: 2px solid #2563eb;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-edit, .btn-delete {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-edit {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: #1d4ed8;
+        }
+        .btn-delete {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-delete:hover {
+            background: #b91c1c;
+        }
+        .invoice-summary {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .summary-row:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-top: 0.5rem;
+            padding-top: 0.75rem;
+            border-top: 2px solid #e5e7eb;
+        }
+        .validation-error-row {
+            background-color: #fee2e2 !important;
+            border: 2px solid #dc2626 !important;
+            border-radius: 0.375rem;
+            padding: 0.75rem !important;
+        }
+        .total-validation-error-summary {
+            border: 2px solid #dc2626 !important;
+        }
+    </style>
+
+    <div id="invoiceTableWrapper" style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; position: sticky; top: 0; z-index: 100; background: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.3s ease-in-out;">
+        {% if items %}
+            {% if total_validation_error %}
+                {% if validation_errors %}
+                    <div class="invoice-validity-header">
+                        <span class="invoice-validity-badge partial">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            Частково достовірно
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="invoice-validity-header">
+                        <span class="invoice-validity-badge invalid">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            Помилка загальної суми
+                        </span>
+                    </div>
+                {% endif %}
+            {% elif validation_errors %}
+                <div class="invoice-validity-header">
+                    <span class="invoice-validity-badge invalid">
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Помилки валідації даних ({{ validation_errors|length }} {{ validation_errors|length|pluralize:"помилка,помилки,помилок" }})
+                    </span>
+                </div>
+            {% else %}
+                <div class="invoice-validity-header">
+                    <span class="invoice-validity-badge valid">
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Дані достовірні
+                    </span>
+                </div>
+            {% endif %}
+            <div class="table-scroll-container" id="tableScrollContainer" style="max-height: 300px;">
+                <table class="invoice-table" style="margin: 0;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Назва товару</th>
+                        <th>Кількість</th>
+                        <th>Ціна нетто</th>
+                        <th>ПДВ %</th>
+                        <th>Сума ПДВ</th>
+                        <th>Ціна брутто</th>
+                        <th>VIN</th>
+                        <th>Достовірність</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr id="invoice-item-row-{{ item.uuid }}">
+                        <td>
+                            <span class="editable-cell" data-field="item_id" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.item_id }}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                                <span class="editable-cell" 
+                                      data-field="item_name" 
+                                      data-uuid="{{ item.uuid }}"
+                                      data-full-value="{{ item.item_name }}"
+                                      onclick="editCell(this)"
+                                      style="flex: 1; cursor: pointer; word-wrap: break-word; white-space: normal;"
+                                      id="item-name-{{ item.uuid }}">
+                                    {% if item.item_name|length > 80 %}
+                                        <span class="item-name-short">{{ item.item_name|truncatewords:12 }}...</span>
+                                        <span class="item-name-full" style="display: none;">{{ item.item_name }}</span>
+                                    {% else %}
+                                        {{ item.item_name }}
+                                    {% endif %}
+                                </span>
+                                {% if item.item_name|length > 80 %}
+                                    <button type="button"
+                                            onclick="event.stopPropagation(); toggleItemNameFull('{{ item.uuid }}')"
+                                            style="background: none; border: none; cursor: pointer; padding: 0.25rem; color: #6b7280; flex-shrink: 0; margin-top: 0.125rem;"
+                                            title="Показати/приховати повну назву"
+                                            id="toggle-name-btn-{{ item.uuid }}"
+                                            onmouseover="this.style.color='#2563eb'"
+                                            onmouseout="this.style.color='#6b7280'">
+                                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="editable-cell" data-field="amount" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.amount|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="editable-cell" data-field="price_netto" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.price_netto|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="editable-cell" data-field="tax_percent" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.tax_percent|floatformat:2|default:"—" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="editable-cell" data-field="tax_price" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.tax_price|floatformat:2|default:"—" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="editable-cell" data-field="price_brutto" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.price_brutto|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="editable-cell" data-field="current_car_vin" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                {{ item.current_car_vin|default:"—" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="data-validity-badge" 
+                                  id="validity-badge-{{ item.uuid }}"
+                                  data-uuid="{{ item.uuid }}">
+                                <svg style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                ОК
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-edit" onclick="saveRow('{{ item.uuid }}')" id="save-btn-{{ item.uuid }}" style="display: none;">Зберегти</button>
+                                <button class="btn-delete" onclick="deleteItem('{{ item.uuid }}')">Видалити</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem 0; color: #6b7280;">
+                <p>Немає позицій у фактурі</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if invoice.invoice_amount %}
+    <div class="invoice-summary {% if total_validation_error %}total-validation-error-summary{% endif %}">
+        <div class="summary-row {% if total_validation_error %}validation-error-row{% endif %}">
+            <span>Загальна сума:</span>
+            <span class="{% if total_validation_error %}validation-error{% endif %}" style="font-weight: 600;" 
+                  {% if total_validation_error %}title="Очікується: {{ total_validation_error.expected|floatformat:2 }} PLN, Знайдено: {{ total_validation_error.found|floatformat:2 }} PLN, Різниця: {{ total_validation_error.difference|floatformat:2 }} PLN"{% endif %}>
+                {{ invoice.invoice_amount|floatformat:2 }} PLN
+            </span>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if total_validation_error %}
+    <div class="total-validation-error">
+        <p><strong>⚠️ Помилка перевірки загальної суми:</strong></p>
+        <p>Очікується: {{ total_validation_error.expected|floatformat:2 }} PLN</p>
+        <p>Знайдено: {{ total_validation_error.found|floatformat:2 }} PLN</p>
+        <p>Різниця: {{ total_validation_error.difference|floatformat:2 }} PLN</p>
+    </div>
+    {% endif %}
+
+    <!-- PDF Viewer Section -->
+    {% if invoice.file_path %}
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.5rem; margin-top: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <h2 style="color: #111827; font-size: 1.25rem; font-weight: 600; margin: 0;">Оригінальний PDF документ</h2>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" 
+                        onclick="toggleTableVisibility()"
+                        id="toggleTableBtn"
+                        style="padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#f9fafb'"
+                        onmouseout="this.style.background='white'"
+                        title="Приховати/показати таблицю">
+                    <svg id="toggleTableIcon" style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    <span id="toggleTableText">Приховати таблицю</span>
+                </button>
+                <button type="button" 
+                        onclick="togglePdfViewer()"
+                        id="togglePdfBtn"
+                        style="padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#f9fafb'"
+                        onmouseout="this.style.background='white'">
+                    <svg id="togglePdfIcon" style="width: 1rem; height: 1rem; transition: transform 0.3s; transform: rotate(180deg);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                    <span id="togglePdfText">Приховати PDF</span>
+                </button>
+            </div>
+        </div>
+        <div id="pdfViewerContainer" style="display: block; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: #f9fafb;">
+            <div style="background: #f3f4f6; padding: 0.75rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
+                <span style="color: #6b7280; font-size: 0.875rem;">{{ invoice.file_path }}</span>
+                <a href="{% url 'invoice-detail' pk=invoice.uuid %}?pdf=download" 
+                   download
+                   style="padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+                   onmouseover="this.style.background='#f9fafb'"
+                   onmouseout="this.style.background='white'">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Завантажити
+                </a>
+            </div>
+            <div id="pdfViewerWrapper" style="position: relative; width: 100%; height: 600px; overflow: hidden; background: #525252;">
+                <div id="pdfViewerContent" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: auto;">
+                    <object id="pdfViewer" 
+                            data="{% url 'invoice-detail' pk=invoice.uuid %}?pdf=view" 
+                            type="application/pdf"
+                            style="width: 100%; height: 100%; border: none;"
+                            title="PDF Viewer">
+                        <iframe id="pdfViewerIframe" 
+                                src="{% url 'invoice-detail' pk=invoice.uuid %}?pdf=view" 
+                                style="width: 100%; height: 100%; border: none;"
+                                title="PDF Viewer">
+                            <p style="color: white; padding: 2rem; text-align: center;">
+                                Ваш браузер не підтримує перегляд PDF. 
+                                <a href="{% url 'invoice-detail' pk=invoice.uuid %}?pdf=download" style="color: #60a5fa; text-decoration: underline;">Завантажте файл</a> для перегляду.
+                            </p>
+                        </iframe>
+                    </object>
+                </div>
+                <div id="pdfDragOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: grab; z-index: 10; display: none; background: transparent;"></div>
+                <button id="enableDragBtn" 
+                        onclick="enablePdfDrag()"
+                        style="position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.5rem; background: rgba(0, 0, 0, 0.7); color: white; border: none; border-radius: 0.25rem; cursor: pointer; z-index: 20; font-size: 0.75rem;"
+                        title="Увімкнути переміщення PDF мишкою">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Full Item Name Modal -->
+    <div id="fullItemNameModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 200; align-items: center; justify-content: center; padding: 1rem;" onclick="closeFullItemNameModal()">
+        <div style="background: white; border-radius: 0.75rem; max-width: 42rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);" onclick="event.stopPropagation()">
+            <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 1rem;">
+                <button type="button" 
+                        onclick="closeFullItemNameModal()"
+                        style="background: none; border: none; cursor: pointer; padding: 0.25rem; color: #6b7280;"
+                        onmouseover="this.style.color='#111827'"
+                        onmouseout="this.style.color='#6b7280'">
+                    <svg style="width: 1.5rem; height: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; max-height: 20rem; overflow-y: auto;">
+                <p id="fullItemNameText" style="color: #374151; font-size: 0.875rem; margin: 0; white-space: pre-wrap; word-wrap: break-word;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Invoice Modal -->
+    <div id="deleteInvoiceModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 200; align-items: center; justify-content: center; padding: 1rem;" onclick="closeDeleteInvoiceModal()">
+        <div style="background: white; border-radius: 0.75rem; max-width: 28rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);" onclick="event.stopPropagation()">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 3rem; height: 3rem; border-radius: 9999px; background: #fef2f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="color: #111827; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem 0;">Видалити фактуру?</h3>
+                    <p style="color: #6b7280; font-size: 0.875rem; margin: 0;" id="deleteInvoiceDescription">Цю дію неможливо скасувати.</p>
+                </div>
+            </div>
+            <p style="color: #374151; font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                Ви впевнені, що хочете видалити цю фактуру? Всі дані будуть безповоротно видалені.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" 
+                        onclick="closeDeleteInvoiceModal()"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f9fafb'"
+                        onmouseout="this.style.background='white'">
+                    Скасувати
+                </button>
+                <button type="button" 
+                        onclick="deleteInvoiceAjax()"
+                        id="deleteInvoiceBtn"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#b91c1c'"
+                        onmouseout="this.style.background='#dc2626'">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Видалити
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editingCells = {};
+        let currentInvoiceUuid = '{{ invoice.uuid }}';
+        let currentInvoiceNameToDelete = '{{ invoice.name }}';
+        let validationErrors = {{ validation_errors_json|safe }};
+        
+        // Highlight validation errors and update validity badges on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update validity badges
+            const allBadges = document.querySelectorAll('[id^="validity-badge-"]');
+            allBadges.forEach(badge => {
+                const uuid = badge.getAttribute('data-uuid');
+                if (validationErrors[uuid]) {
+                    // Has validation errors - show invalid badge
+                    const errors = validationErrors[uuid];
+                    const errorMessages = Object.entries(errors).map(([field, msg]) => `${field}: ${msg}`).join('; ');
+                    badge.className = 'data-validity-badge invalid';
+                    badge.title = errorMessages;
+                    badge.innerHTML = `
+                        <svg style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Помилка
+                    `;
+                } else {
+                    // No errors - show valid badge
+                    badge.className = 'data-validity-badge valid';
+                    badge.title = 'Дані перевірено і достовірні';
+                    badge.innerHTML = `
+                        <svg style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        ОК
+                    `;
+                }
+            });
+            
+            // Highlight validation errors in cells
+            for (let itemUuid in validationErrors) {
+                const errors = validationErrors[itemUuid];
+                const row = document.getElementById(`invoice-item-row-${itemUuid}`);
+                if (row) {
+                    for (let field in errors) {
+                        const cell = row.querySelector(`[data-field="${field}"]`);
+                        if (cell) {
+                            cell.classList.add('validation-error');
+                            cell.title = errors[field];
+                        }
+                    }
+                }
+            }
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function editCell(element) {
+            const field = element.getAttribute('data-field');
+            const uuid = element.getAttribute('data-uuid');
+            // Get full value from data attribute if available, otherwise use textContent
+            const fullValue = element.getAttribute('data-full-value');
+            const currentValue = fullValue ? fullValue : element.textContent.trim();
+
+            if (editingCells[uuid] && editingCells[uuid].field === field) {
+                return; // Вже редагується
+            }
+
+            const input = document.createElement('input');
+            input.type = field === 'amount' || field.includes('price') || field === 'tax_percent' ? 'number' : 'text';
+            input.value = currentValue === '—' ? '' : currentValue;
+            input.step = '0.01';
+            input.className = 'editable-input';
+            // For long text fields, use textarea instead of input
+            if (field === 'item_name' && currentValue.length > 100) {
+                const textarea = document.createElement('textarea');
+                textarea.value = currentValue === '—' ? '' : currentValue;
+                textarea.className = 'editable-input';
+                textarea.style.cssText = 'width: 100%; padding: 0.25rem 0.5rem; border: 2px solid #2563eb; border-radius: 0.25rem; font-size: 0.875rem; min-height: 4rem; resize: vertical;';
+                textarea.style.fontFamily = 'inherit';
+                
+                element.innerHTML = '';
+                element.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                
+                editingCells[uuid] = { field: field, element: element, originalValue: currentValue };
+                
+                // Show save button
+                const saveBtn = document.getElementById(`save-btn-${uuid}`);
+                if (saveBtn) {
+                    saveBtn.style.display = 'inline-block';
+                }
+                
+                textarea.addEventListener('blur', function() {
+                    if (editingCells[uuid] && editingCells[uuid].field === field) {
+                        cancelEdit(uuid);
+                    }
+                });
+                
+                textarea.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        saveRow(uuid);
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelEdit(uuid);
+                    }
+                });
+                
+                return;
+            }
+            
+            input.step = '0.01';
+            input.className = 'editable-input';
+            input.style.cssText = 'width: 100%; padding: 0.25rem 0.5rem; border: 2px solid #2563eb; border-radius: 0.25rem; font-size: 0.875rem;';
+
+            element.innerHTML = '';
+            element.appendChild(input);
+            input.focus();
+            input.select();
+
+            editingCells[uuid] = { field: field, element: element, originalValue: currentValue };
+
+            // Показати кнопку збереження
+            const saveBtn = document.getElementById(`save-btn-${uuid}`);
+            if (saveBtn) {
+                saveBtn.style.display = 'inline-block';
+            }
+
+            input.addEventListener('blur', function() {
+                if (editingCells[uuid] && editingCells[uuid].field === field) {
+                    cancelEdit(uuid);
+                }
+            });
+
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveRow(uuid);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit(uuid);
+                }
+            });
+        }
+
+        function cancelEdit(uuid) {
+            if (editingCells[uuid]) {
+                const { element, originalValue, field } = editingCells[uuid];
+                // Restore display based on field type
+                if (field === 'item_name' && originalValue.length > 80) {
+                    const words = originalValue.split(' ');
+                    const truncated = words.slice(0, 12).join(' ') + '...';
+                    element.innerHTML = truncated;
+                } else {
+                    element.textContent = originalValue;
+                }
+                delete editingCells[uuid];
+
+                const saveBtn = document.getElementById(`save-btn-${uuid}`);
+                if (saveBtn) {
+                    saveBtn.style.display = 'none';
+                }
+            }
+        }
+
+        function saveRow(uuid) {
+            if (!editingCells[uuid]) return;
+
+            const { field, element } = editingCells[uuid];
+            const input = element.querySelector('input');
+            const textarea = element.querySelector('textarea');
+            const newValue = textarea ? textarea.value : (input ? input.value : '');
+
+            // Зібрати всі дані рядка
+            const row = document.getElementById(`invoice-item-row-${uuid}`);
+            const data = {};
+            row.querySelectorAll('.editable-cell').forEach(cell => {
+                const fieldName = cell.getAttribute('data-field');
+                const input = cell.querySelector('input');
+                const textarea = cell.querySelector('textarea');
+                if (textarea) {
+                    data[fieldName] = textarea.value;
+                } else if (input) {
+                    data[fieldName] = input.value;
+                } else {
+                    data[fieldName] = cell.textContent.trim();
+                }
+            });
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                             document.querySelector('meta[name=csrf-token]')?.content ||
+                             getCookie('csrftoken');
+
+            fetch(`/core/invoice-items/${uuid}/update/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: new URLSearchParams(data).toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    // Оновити всі комірки
+                    row.querySelectorAll('.editable-cell').forEach(cell => {
+                        const fieldName = cell.getAttribute('data-field');
+                        const input = cell.querySelector('input');
+                        const textarea = cell.querySelector('textarea');
+                        if (textarea) {
+                            const value = textarea.value;
+                            // Update data-full-value attribute
+                            cell.setAttribute('data-full-value', value);
+                            // Update display (truncate if long)
+                            if (value.length > 80) {
+                                const words = value.split(' ');
+                                const truncated = words.slice(0, 12).join(' ') + '...';
+                                cell.innerHTML = truncated;
+                            } else {
+                                cell.innerHTML = value || '—';
+                            }
+                        } else if (input) {
+                            const value = input.value;
+                            cell.setAttribute('data-full-value', value);
+                            cell.innerHTML = value || '—';
+                        }
+                    });
+                    editingCells = {};
+                    const saveBtn = document.getElementById(`save-btn-${uuid}`);
+                    if (saveBtn) {
+                        saveBtn.style.display = 'none';
+                    }
+                    // Reload page to refresh validation errors if any
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    alert(`Помилка: ${data.errors ? Object.values(data.errors).flat().join(', ') : 'Невідома помилка'}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Виникла помилка під час збереження.');
+            });
+        }
+
+        function deleteItem(uuid) {
+            if (!confirm('Ви впевнені, що хочете видалити цю позицію?')) {
+                return;
+            }
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                             document.querySelector('meta[name=csrf-token]')?.content ||
+                             getCookie('csrftoken');
+
+            fetch(`/core/invoice-items/${uuid}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const row = document.getElementById(`invoice-item-row-${uuid}`);
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s, transform 0.3s';
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(-20px)';
+                        setTimeout(() => {
+                            row.remove();
+                        }, 300);
+                    }
+                } else {
+                    alert(`Помилка: ${data.errors ? Object.values(data.errors).flat().join(', ') : 'Невідома помилка'}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Виникла помилка під час видалення.');
+            });
+        }
+
+        function openDeleteInvoiceModal(invoiceUuid, invoiceName) {
+            currentInvoiceUuid = invoiceUuid;
+            currentInvoiceNameToDelete = invoiceName;
+            document.getElementById('deleteInvoiceDescription').textContent = `Фактура "${invoiceName}" буде видалена.`;
+            document.getElementById('deleteInvoiceModal').style.display = 'flex';
+        }
+
+        function closeDeleteInvoiceModal() {
+            document.getElementById('deleteInvoiceModal').style.display = 'none';
+        }
+
+        function deleteInvoiceAjax() {
+            if (!currentInvoiceUuid) return;
+
+            const btn = document.getElementById('deleteInvoiceBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<svg style="width: 1rem; height: 1rem; animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Видалення...';
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                             document.querySelector('meta[name=csrf-token]')?.content ||
+                             getCookie('csrftoken');
+
+            fetch(`/core/invoices/${currentInvoiceUuid}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/core/invoices/';
+                } else {
+                    return response.json().then(errorData => {
+                        alert(`Помилка видалення: ${errorData.errors?.__all__?.[0] || 'Невідома помилка'}`);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Виникла помилка під час видалення фактури.');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        }
+
+        function toggleItemNameFull(uuid) {
+            const cell = document.getElementById(`item-name-${uuid}`);
+            const shortSpan = cell.querySelector('.item-name-short');
+            const fullSpan = cell.querySelector('.item-name-full');
+            const btn = document.getElementById(`toggle-name-btn-${uuid}`);
+            
+            if (shortSpan && fullSpan) {
+                if (shortSpan.style.display === 'none') {
+                    // Show short version
+                    shortSpan.style.display = 'inline';
+                    fullSpan.style.display = 'none';
+                    btn.title = 'Показати повну назву';
+                } else {
+                    // Show full version
+                    shortSpan.style.display = 'none';
+                    fullSpan.style.display = 'inline';
+                    btn.title = 'Приховати повну назву';
+                }
+            }
+        }
+        
+        function showFullItemNameFromElement(element) {
+            // Get full value from data attribute (already properly decoded by browser)
+            const fullName = element.getAttribute('data-full-value') || element.textContent.trim();
+            document.getElementById('fullItemNameText').textContent = fullName;
+            document.getElementById('fullItemNameModal').style.display = 'flex';
+        }
+        
+        function showFullItemName(uuid, fullName) {
+            // Decode Unicode escape sequences if present
+            let decodedName = fullName;
+            if (fullName && fullName.includes('\\u')) {
+                decodedName = fullName.replace(/\\u([0-9a-fA-F]{4})/g, function(match, code) {
+                    return String.fromCharCode(parseInt(code, 16));
+                });
+            }
+            document.getElementById('fullItemNameText').textContent = decodedName || fullName;
+            document.getElementById('fullItemNameModal').style.display = 'flex';
+        }
+
+        function closeFullItemNameModal() {
+            document.getElementById('fullItemNameModal').style.display = 'none';
+        }
+
+        function togglePdfViewer() {
+            const container = document.getElementById('pdfViewerContainer');
+            const tableContainer = document.getElementById('tableScrollContainer');
+            const btn = document.getElementById('togglePdfBtn');
+            const icon = document.getElementById('togglePdfIcon');
+            const text = document.getElementById('togglePdfText');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                text.textContent = 'Приховати PDF';
+                icon.style.transform = 'rotate(180deg)';
+                // Scroll to PDF viewer smoothly
+                setTimeout(() => {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                container.style.display = 'none';
+                text.textContent = 'Показати PDF';
+                icon.style.transform = 'rotate(0deg)';
+                // When PDF is hidden, restore table to normal state
+                if (tableContainer && tableContainer.classList.contains('table-compact')) {
+                    tableContainer.classList.remove('table-compact');
+                    tableContainer.style.overflowY = 'auto';
+                    tableContainer.style.overflowX = 'auto';
+                    setTimeout(() => {
+                        tableContainer.scrollTop = 0;
+                    }, 50);
+                }
+            }
+        }
+
+        function toggleTableVisibility() {
+            const tableWrapper = document.getElementById('invoiceTableWrapper');
+            const tableContainer = document.getElementById('tableScrollContainer');
+            const btn = document.getElementById('toggleTableBtn');
+            const icon = document.getElementById('toggleTableIcon');
+            const text = document.getElementById('toggleTableText');
+            
+            if (tableWrapper && tableContainer) {
+                const isCompact = tableContainer.classList.contains('table-compact');
+                
+                if (isCompact) {
+                    // Expand table - show all rows with scrolling
+                    tableContainer.classList.remove('table-compact');
+                    // Explicitly restore scrolling
+                    tableContainer.style.overflowY = 'auto';
+                    tableContainer.style.overflowX = 'auto';
+                    // Scroll to top when expanding
+                    setTimeout(() => {
+                        tableContainer.scrollTop = 0;
+                    }, 50);
+                    text.textContent = 'Згорнути таблицю';
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>';
+                } else {
+                    // Compact mode - scroll to bottom to show last 3 rows, but allow scrolling up
+                    tableContainer.classList.add('table-compact');
+                    text.textContent = 'Розгорнути таблицю';
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>';
+                    // Scroll to bottom to show last 3 rows
+                    setTimeout(() => {
+                        tableContainer.scrollTop = tableContainer.scrollHeight;
+                    }, 50);
+                }
+            }
+        }
+        
+        // Auto-compact table when scrolling to PDF
+        (function() {
+            const pdfSection = document.getElementById('pdfViewerContainer');
+            const tableContainer = document.getElementById('tableScrollContainer');
+            const tableWrapper = document.getElementById('invoiceTableWrapper');
+            
+            if (!pdfSection || !tableContainer || !tableWrapper) return;
+            
+            let isManuallyToggled = false;
+            let manualToggleTimeout = null;
+            
+            // Track manual toggles
+            const toggleBtn = document.getElementById('toggleTableBtn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    isManuallyToggled = true;
+                    if (manualToggleTimeout) {
+                        clearTimeout(manualToggleTimeout);
+                    }
+                    manualToggleTimeout = setTimeout(() => {
+                        isManuallyToggled = false;
+                    }, 2000);
+                });
+            }
+            
+            function checkPdfVisibility() {
+                if (isManuallyToggled) return;
+                
+                // Check if PDF is hidden
+                if (pdfSection.style.display === 'none' || pdfSection.offsetParent === null) {
+                    // PDF is hidden, expand table - restore scrolling
+                    if (tableContainer.classList.contains('table-compact')) {
+                        tableContainer.classList.remove('table-compact');
+                        tableContainer.style.overflowY = 'auto';
+                        tableContainer.style.overflowX = 'auto';
+                        setTimeout(() => {
+                            tableContainer.scrollTop = 0;
+                        }, 50);
+                    }
+                    return;
+                }
+                
+                // Check PDF position
+                const pdfRect = pdfSection.getBoundingClientRect();
+                const pdfIsVisible = pdfRect.top < window.innerHeight && pdfRect.bottom > 0;
+                const pdfIsNearTop = pdfRect.top < window.innerHeight * 0.7;
+                
+                // Check table position - if table is near top and PDF is far below, expand table
+                const tableRect = tableWrapper.getBoundingClientRect();
+                const tableIsNearTop = tableRect.top < window.innerHeight * 0.2 && tableRect.bottom > 0;
+                const pdfIsBelowTable = pdfRect.top > tableRect.bottom + 200;
+                
+                if (pdfIsVisible && pdfIsNearTop) {
+                    // PDF is visible and near top, compact table
+                    if (!tableContainer.classList.contains('table-compact')) {
+                        tableContainer.classList.add('table-compact');
+                        // Scroll to bottom to show last 3 rows
+                        setTimeout(() => {
+                            tableContainer.scrollTop = tableContainer.scrollHeight;
+                        }, 50);
+                    }
+                } else if (tableIsNearTop && (pdfIsBelowTable || !pdfIsVisible)) {
+                    // Table is in focus and PDF is below or not visible, expand table
+                    if (tableContainer.classList.contains('table-compact')) {
+                        tableContainer.classList.remove('table-compact');
+                        tableContainer.style.overflowY = 'auto';
+                        tableContainer.style.overflowX = 'auto';
+                        setTimeout(() => {
+                            tableContainer.scrollTop = 0;
+                        }, 50);
+                    }
+                } else if (!pdfIsVisible || pdfIsBelowTable) {
+                    // PDF is not visible or far below, expand table
+                    if (tableContainer.classList.contains('table-compact')) {
+                        tableContainer.classList.remove('table-compact');
+                        tableContainer.style.overflowY = 'auto';
+                        tableContainer.style.overflowX = 'auto';
+                        setTimeout(() => {
+                            tableContainer.scrollTop = 0;
+                        }, 50);
+                    }
+                }
+            }
+            
+            // Use both IntersectionObserver and scroll listener for reliability
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (isManuallyToggled) return;
+                    
+                    // Check if PDF is hidden
+                    if (pdfSection.style.display === 'none' || pdfSection.offsetParent === null) {
+                        // PDF is hidden, expand table
+                        if (tableContainer.classList.contains('table-compact')) {
+                            tableContainer.classList.remove('table-compact');
+                            tableContainer.style.overflowY = 'auto';
+                            tableContainer.style.overflowX = 'auto';
+                            setTimeout(() => {
+                                tableContainer.scrollTop = 0;
+                            }, 50);
+                        }
+                        return;
+                    }
+                    
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
+                        // PDF is visible, compact table - scroll to bottom to show last 3 rows
+                        if (!tableContainer.classList.contains('table-compact')) {
+                            tableContainer.classList.add('table-compact');
+                            // Scroll to bottom to show last 3 rows
+                            setTimeout(() => {
+                                tableContainer.scrollTop = tableContainer.scrollHeight;
+                            }, 50);
+                        }
+                    } else if (!entry.isIntersecting) {
+                        // PDF is not visible, check if table is in focus
+                        const tableRect = tableWrapper.getBoundingClientRect();
+                        const tableIsNearTop = tableRect.top < window.innerHeight * 0.2 && tableRect.bottom > 0;
+                        
+                        // If table is in focus, expand it
+                        if (tableIsNearTop) {
+                            if (tableContainer.classList.contains('table-compact')) {
+                                tableContainer.classList.remove('table-compact');
+                                tableContainer.style.overflowY = 'auto';
+                                tableContainer.style.overflowX = 'auto';
+                                setTimeout(() => {
+                                    tableContainer.scrollTop = 0;
+                                }, 50);
+                            }
+                        } else {
+                            // PDF is not visible and table is not in focus, expand table
+                            if (tableContainer.classList.contains('table-compact')) {
+                                tableContainer.classList.remove('table-compact');
+                                // Explicitly restore scrolling
+                                tableContainer.style.overflowY = 'auto';
+                                tableContainer.style.overflowX = 'auto';
+                                // Scroll to top when expanding
+                                setTimeout(() => {
+                                    tableContainer.scrollTop = 0;
+                                }, 50);
+                            }
+                        }
+                    }
+                });
+            }, {
+                threshold: [0, 0.1, 0.5, 1.0],
+                rootMargin: '-50px 0px'
+            });
+            
+            observer.observe(pdfSection);
+            
+            // Also observe table wrapper to detect when it comes back into view
+            const tableObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (isManuallyToggled) return;
+                    
+                    // If table is visible and near top, expand it
+                    if (entry.isIntersecting && entry.boundingClientRect.top < window.innerHeight * 0.3) {
+                        const pdfRect = pdfSection.getBoundingClientRect();
+                        const pdfIsVisible = pdfRect.top < window.innerHeight && pdfRect.bottom > 0;
+                        const pdfIsNearTop = pdfRect.top < window.innerHeight * 0.5;
+                        
+                        // If PDF is not visible or is below table, expand table
+                        if (!pdfIsVisible || pdfRect.top > window.innerHeight * 0.3) {
+                            if (tableContainer.classList.contains('table-compact')) {
+                                tableContainer.classList.remove('table-compact');
+                                tableContainer.style.overflowY = 'auto';
+                                tableContainer.style.overflowX = 'auto';
+                                setTimeout(() => {
+                                    tableContainer.scrollTop = 0;
+                                }, 50);
+                            }
+                        }
+                    }
+                });
+            }, {
+                threshold: [0, 0.1, 0.3, 0.5],
+                rootMargin: '-100px 0px'
+            });
+            
+            tableObserver.observe(tableWrapper);
+            
+            // Also check on scroll for better reliability
+            let scrollTimeout;
+            window.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(checkPdfVisibility, 50);
+            }, { passive: true });
+            
+            // Check when PDF visibility changes
+            const pdfObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        checkPdfVisibility();
+                    }
+                });
+            });
+            
+            if (pdfSection) {
+                pdfObserver.observe(pdfSection, {
+                    attributes: true,
+                    attributeFilter: ['style']
+                });
+            }
+            
+            // Initial check
+            checkPdfVisibility();
+        })();
+
+        // PDF drag/pan functionality
+        let pdfDragEnabled = false;
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+        
+        function enablePdfDrag() {
+            const pdfWrapper = document.getElementById('pdfViewerWrapper');
+            const pdfContent = document.getElementById('pdfViewerContent');
+            const dragOverlay = document.getElementById('pdfDragOverlay');
+            const enableBtn = document.getElementById('enableDragBtn');
+            
+            if (!pdfWrapper || !pdfContent || !dragOverlay) return;
+            
+            pdfDragEnabled = !pdfDragEnabled;
+            
+            if (pdfDragEnabled) {
+                dragOverlay.style.display = 'block';
+                enableBtn.style.background = 'rgba(37, 99, 235, 0.8)';
+                enableBtn.title = 'Вимкнути переміщення PDF мишкою';
+                
+                dragOverlay.addEventListener('mousedown', startDrag);
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+            } else {
+                dragOverlay.style.display = 'none';
+                enableBtn.style.background = 'rgba(0, 0, 0, 0.7)';
+                enableBtn.title = 'Увімкнути переміщення PDF мишкою';
+                
+                dragOverlay.removeEventListener('mousedown', startDrag);
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        }
+        
+        function startDrag(e) {
+            const pdfContent = document.getElementById('pdfViewerContent');
+            const dragOverlay = document.getElementById('pdfDragOverlay');
+            
+            if (!pdfContent || !dragOverlay) return;
+            
+            isDragging = true;
+            dragOverlay.style.cursor = 'grabbing';
+            startX = e.pageX - dragOverlay.offsetLeft;
+            startY = e.pageY - dragOverlay.offsetTop;
+            scrollLeft = pdfContent.scrollLeft;
+            scrollTop = pdfContent.scrollTop;
+            e.preventDefault();
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            
+            const pdfContent = document.getElementById('pdfViewerContent');
+            const dragOverlay = document.getElementById('pdfDragOverlay');
+            
+            if (!pdfContent || !dragOverlay) return;
+            
+            e.preventDefault();
+            const x = e.pageX - dragOverlay.offsetLeft;
+            const y = e.pageY - dragOverlay.offsetTop;
+            const walkX = (x - startX) * 2;
+            const walkY = (y - startY) * 2;
+            pdfContent.scrollLeft = scrollLeft - walkX;
+            pdfContent.scrollTop = scrollTop - walkY;
+        }
+        
+        function stopDrag() {
+            if (isDragging) {
+                isDragging = false;
+                const dragOverlay = document.getElementById('pdfDragOverlay');
+                if (dragOverlay) {
+                    dragOverlay.style.cursor = 'grab';
+                }
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (document.getElementById('deleteInvoiceModal').style.display === 'flex') {
+                    closeDeleteInvoiceModal();
+                }
+                if (document.getElementById('fullItemNameModal').style.display === 'flex') {
+                    closeFullItemNameModal();
+                }
+            }
+        });
+    </script>
+{% endblock %}
+

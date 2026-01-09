@@ -1,0 +1,490 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Створити схему сервісного плану{% endblock %}
+
+{% block head %}
+    <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
+        Створити схему сервісного плану
+    </h1>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container" style="max-width: 900px; margin: 0 auto;">
+        <div class="form-card" style="background: white; border-radius: 0.75rem; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <form method="POST" action="{% url 'car-service-plan-create' %}" id="servicePlanForm">
+                {% csrf_token %}
+                
+                <!-- Приховані поля для service_plan та services_json -->
+                {{ form.service_plan }}
+                {{ form.services_json }}
+                
+                <!-- Основна інформація -->
+                <div class="form-section" style="margin-bottom: 2rem;">
+                    <h3 class="form-section-title" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f3f4f6;">
+                        Основна інформація
+                    </h3>
+                    
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="{{ form.car.id_for_label }}" class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">
+                            Автомобіль <span style="color: #ef4444;">*</span>
+                        </label>
+                        {{ form.car }}
+                        {% if form.car.errors %}
+                            <span class="form-error" style="font-size: 0.75rem; color: #ef4444; margin-top: 0.25rem; display: block;">{{ form.car.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="{{ form.regulation_name.id_for_label }}" class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">
+                            Назва регламенту <span style="color: #ef4444;">*</span>
+                        </label>
+                        {{ form.regulation_name }}
+                        {% if form.regulation_name.errors %}
+                            <span class="form-error" style="font-size: 0.75rem; color: #ef4444; margin-top: 0.25rem; display: block;">{{ form.regulation_name.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="{{ form.mileage.id_for_label }}" class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">
+                            Поточний пробіг (км) <span style="color: #ef4444;">*</span>
+                        </label>
+                        {{ form.mileage }}
+                        {% if form.mileage.errors %}
+                            <span class="form-error" style="font-size: 0.75rem; color: #ef4444; margin-top: 0.25rem; display: block;">{{ form.mileage.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Сервіси -->
+                <div class="form-section" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f3f4f6;">
+                        <h3 class="form-section-title" style="font-size: 1.125rem; font-weight: 600; margin: 0;">
+                            Сервіси
+                        </h3>
+                    </div>
+
+                    <div id="servicesContainer" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <!-- Сервіси будуть додані динамічно -->
+                    </div>
+
+                    <div id="servicesError" style="display: none; font-size: 0.75rem; color: #ef4444; margin-top: 0.5rem;"></div>
+                    
+                    <!-- Кнопка додавання сервісу знизу зліва -->
+                    <div style="display: flex; justify-content: flex-start; margin-top: 1rem;">
+                        <button type="button" id="addServiceBtn" style="background: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Додати сервіс
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Попередження -->
+                <div id="warningSection" style="display: none; margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 0.5rem; border: 1px solid #fbbf24;">
+                    <div style="display: flex; align-items: start; gap: 0.75rem;">
+                        <svg style="width: 1.25rem; height: 1.25rem; color: #f59e0b; flex-shrink: 0; margin-top: 0.125rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <div>
+                            <h4 style="font-size: 0.875rem; font-weight: 600; color: #92400e; margin: 0 0 0.25rem 0;">Попередження</h4>
+                            <p id="warningText" style="font-size: 0.875rem; color: #78350f; margin: 0;"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Результат -->
+                <div id="resultSection" style="display: none; margin-top: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
+                    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem;">Розрахована схема:</h3>
+                    <pre id="resultJson" style="background: white; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.875rem; line-height: 1.5; max-height: 500px; overflow-y: auto;"></pre>
+                </div>
+
+                <!-- Кнопки -->
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                    <button type="button" id="resetBtn" style="padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: 2px solid #e5e7eb; background: white; color: #374151; cursor: pointer; font-size: 0.9375rem; font-weight: 500;">
+                        Скинути
+                    </button>
+                    <button type="submit" id="submitBtn" style="padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; font-size: 0.9375rem; font-weight: 500; box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);">
+                        Розрахувати схему
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .form-container input[type="text"],
+        .form-container input[type="number"],
+        .form-container select,
+        .form-container textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            font-size: 0.9375rem;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .form-container input:focus,
+        .form-container select:focus,
+        .form-container textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .service-item {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            position: relative;
+        }
+
+        .service-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .service-item-title {
+            font-weight: 500;
+            color: #111827;
+        }
+
+        .service-item-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            width: 2rem;
+            height: 2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .service-item-remove:hover {
+            background: #dc2626;
+        }
+
+        .service-fields {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .service-field-full {
+            grid-column: 1 / -1;
+        }
+
+        .service-field label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .service-field input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .service-fields {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    {{ cars_mileage|json_script:"cars-mileage-data" }}
+    {{ default_schema|json_script:"default-schema-data" }}
+    <script>
+        let serviceCounter = 0;
+        
+        // Дані про пробіги автомобілів
+        const carsMileage = JSON.parse(document.getElementById('cars-mileage-data').textContent);
+        const defaultSchema = JSON.parse(document.getElementById('default-schema-data').textContent);
+        let originalMileage = null;
+        let mileageChanged = false;
+        
+        // Функція для транслітерації українського тексту в ключ (англійська з підкресленнями)
+        function transliterateToKey(text) {
+            if (!text) return '';
+            
+            const transliterationMap = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
+                'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'yi', 'й': 'y', 'к': 'k', 'л': 'l',
+                'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ь': '', 'ю': 'yu',
+                'я': 'ya',
+                'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Ґ': 'G', 'Д': 'D', 'Е': 'E', 'Є': 'Ye',
+                'Ж': 'Zh', 'З': 'Z', 'И': 'Y', 'І': 'I', 'Ї': 'Yi', 'Й': 'Y', 'К': 'K', 'Л': 'L',
+                'М': 'M', 'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+                'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ю': 'Yu', 'Я': 'Ya'
+            };
+            
+            let result = text.toLowerCase();
+            
+            // Транслітерація
+            for (let ukr in transliterationMap) {
+                result = result.replace(new RegExp(ukr, 'g'), transliterationMap[ukr]);
+            }
+            
+            // Замінити всі не-латинські символи та пробіли на підкреслення
+            result = result.replace(/[^a-z0-9_]/g, '_');
+            
+            // Видалити множинні підкреслення
+            result = result.replace(/_+/g, '_');
+            
+            // Видалити підкреслення на початку та в кінці
+            result = result.replace(/^_+|_+$/g, '');
+            
+            return result;
+        }
+
+        // Автозаповнення пробігу при виборі автомобіля
+        document.addEventListener('DOMContentLoaded', function() {
+            const carSelect = document.querySelector('[name="car"]');
+            const mileageInput = document.querySelector('[name="mileage"]');
+            
+            if (carSelect && mileageInput) {
+                carSelect.addEventListener('change', function() {
+                    const selectedCarId = this.value;
+                    if (selectedCarId && carsMileage[selectedCarId]) {
+                        const carMileage = carsMileage[selectedCarId];
+                        mileageInput.value = carMileage;
+                        originalMileage = carMileage;
+                        mileageChanged = false;
+                        // Приховати попередження при зміні авто
+                        document.getElementById('warningSection').style.display = 'none';
+                    }
+                });
+                
+                // Відстеження змін пробігу вручну
+                mileageInput.addEventListener('input', function() {
+                    if (originalMileage !== null && this.value !== originalMileage.toString()) {
+                        mileageChanged = true;
+                    } else {
+                        mileageChanged = false;
+                    }
+                });
+            }
+        });
+
+        // Додати сервіс
+        document.getElementById('addServiceBtn').addEventListener('click', function() {
+            addServiceItem();
+        });
+
+        function addServiceItem(serviceData = null) {
+            const container = document.getElementById('servicesContainer');
+            const serviceId = serviceCounter++;
+            
+            const serviceItem = document.createElement('div');
+            serviceItem.className = 'service-item';
+            serviceItem.dataset.serviceId = serviceId;
+            
+            serviceItem.innerHTML = `
+                <div class="service-item-header">
+                    <span class="service-item-title">Сервіс #${serviceId + 1}</span>
+                    <button type="button" class="service-item-remove" onclick="removeService(${serviceId})">×</button>
+                </div>
+                <div class="service-fields">
+                    <input type="hidden" name="service_key_${serviceId}" class="service-key-input" value="${serviceData?.key || ''}">
+                    <div class="service-field service-field-full">
+                        <label>Назва сервісу *</label>
+                        <input type="text" name="service_name_${serviceId}" class="service-name-input" value="${serviceData?.name || ''}" placeholder="наприклад: Заміна моторного масла та масляного фільтра" required>
+                    </div>
+                    <div class="service-field">
+                        <label>Інтервал (км) *</label>
+                        <input type="number" name="service_interval_${serviceId}" value="${serviceData?.interval_km || ''}" placeholder="10000" min="1" required>
+                    </div>
+                    <div class="service-field">
+                        <label>Останній сервіс (км) *</label>
+                        <input type="number" name="service_last_${serviceId}" value="${serviceData?.last_service_km || ''}" placeholder="162467" min="0" required>
+                    </div>
+                </div>
+            `;
+            
+            // Додати обробник для автоматичної генерації key з назви
+            const nameInput = serviceItem.querySelector('.service-name-input');
+            const keyInput = serviceItem.querySelector('.service-key-input');
+            
+            nameInput.addEventListener('input', function() {
+                const generatedKey = transliterateToKey(this.value);
+                keyInput.value = generatedKey;
+            });
+            
+            // Якщо є початкове значення, згенерувати key
+            if (nameInput.value && !keyInput.value) {
+                keyInput.value = transliterateToKey(nameInput.value);
+            }
+            
+            container.appendChild(serviceItem);
+        }
+
+        function removeService(serviceId) {
+            const serviceItem = document.querySelector(`[data-service-id="${serviceId}"]`);
+            if (serviceItem) {
+                serviceItem.remove();
+            }
+        }
+
+        // Обробка форми
+        document.getElementById('servicePlanForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Зібрати дані сервісів
+            const services = [];
+            const serviceItems = document.querySelectorAll('.service-item');
+            
+            if (serviceItems.length === 0) {
+                document.getElementById('servicesError').textContent = 'Додайте хоча б один сервіс';
+                document.getElementById('servicesError').style.display = 'block';
+                return;
+            }
+            
+            serviceItems.forEach(item => {
+                const serviceId = item.dataset.serviceId;
+                const keyInput = item.querySelector(`[name="service_key_${serviceId}"]`);
+                const nameInput = item.querySelector(`[name="service_name_${serviceId}"]`);
+                const intervalInput = item.querySelector(`[name="service_interval_${serviceId}"]`);
+                const lastServiceInput = item.querySelector(`[name="service_last_${serviceId}"]`);
+                
+                const name = nameInput ? nameInput.value.trim() : '';
+                const interval = intervalInput ? parseInt(intervalInput.value) : 0;
+                const lastService = lastServiceInput ? parseInt(lastServiceInput.value) : 0;
+                
+                // Генерувати key автоматично, якщо його немає
+                let key = keyInput ? keyInput.value.trim() : '';
+                if (!key && name) {
+                    key = transliterateToKey(name);
+                }
+                
+                if (key && name && interval && !isNaN(lastService)) {
+                    services.push({
+                        key: key,
+                        name: name,
+                        interval_km: interval,
+                        last_service_km: lastService
+                    });
+                }
+            });
+            
+            if (services.length === 0) {
+                document.getElementById('servicesError').textContent = 'Заповніть всі поля сервісів';
+                document.getElementById('servicesError').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('servicesError').style.display = 'none';
+            
+            // Зібрати дані форми
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            formData.append('car', document.querySelector('[name="car"]').value);
+            formData.append('regulation_name', document.querySelector('[name="regulation_name"]').value);
+            formData.append('mileage', document.querySelector('[name="mileage"]').value);
+            formData.append('services_json', JSON.stringify(services));
+            
+            // Відправити запит
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Розрахунок...';
+            
+            try {
+                const response = await fetch('{% url "car-service-plan-create" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: formData
+                });
+                
+                // Перевірка, чи відповідь є JSON
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    const text = await response.text();
+                    throw new Error('Сервер повернув HTML замість JSON. Можливо, є помилка валідації.');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    // Показати попередження, якщо є
+                    if (data.warning) {
+                        document.getElementById('warningText').textContent = data.warning;
+                        document.getElementById('warningSection').style.display = 'block';
+                    } else {
+                        document.getElementById('warningSection').style.display = 'none';
+                    }
+                    
+                    // Показати результат
+                    document.getElementById('resultSection').style.display = 'block';
+                    document.getElementById('resultJson').textContent = JSON.stringify(data.schema, null, 2);
+                    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Оновити originalMileage після успішного збереження
+                    const carSelect = document.querySelector('[name="car"]');
+                    const mileageInput = document.querySelector('[name="mileage"]');
+                    if (carSelect && mileageInput && carsMileage[carSelect.value]) {
+                        originalMileage = parseInt(mileageInput.value);
+                        carsMileage[carSelect.value] = originalMileage;
+                        mileageChanged = false;
+                    }
+                } else {
+                    // Показати помилки
+                    alert('Помилка: ' + JSON.stringify(data.errors, null, 2));
+                }
+            } catch (error) {
+                alert('Помилка при відправці: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Розрахувати схему';
+            }
+        });
+
+        // Скинути форму
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            document.getElementById('servicePlanForm').reset();
+            document.getElementById('servicesContainer').innerHTML = '';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('servicesError').style.display = 'none';
+            serviceCounter = 0;
+        });
+
+        // Автоматично заповнити форму дефолтною схемою при завантаженні
+        document.addEventListener('DOMContentLoaded', function() {
+            // Заповнити поле regulation_name
+            const regulationNameInput = document.querySelector('[name="regulation_name"]');
+            if (regulationNameInput && defaultSchema && defaultSchema.regulation_name) {
+                regulationNameInput.value = defaultSchema.regulation_name;
+            }
+            
+            // Додати всі сервіси з дефолтної схеми
+            if (defaultSchema && defaultSchema.services && Array.isArray(defaultSchema.services)) {
+                defaultSchema.services.forEach(service => {
+                    addServiceItem({
+                        key: service.key || '',
+                        name: service.name || '',
+                        interval_km: service.interval_km || 0,
+                        last_service_km: service.last_service_km || 0
+                    });
+                });
+            }
+        });
+    </script>
+{% endblock %}
+
