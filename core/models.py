@@ -351,10 +351,40 @@ class Invoice(AbstractTimeStampModel):
     name = models.CharField(max_length=55)
     file_path = models.CharField(max_length=255)
     invoice_data = models.JSONField(default=dict)
-    invoice_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    invoice_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_archived = models.BooleanField(default=False)
 
     cars = models.ManyToManyField(Car, related_name="invoices")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Фактура"
+        verbose_name_plural = "Фактури"
+
+    def __str__(self):
+        return f"{self.name} - {self.created_at.strftime('%d.%m.%Y') if self.created_at else ''}"
+
+
+class InvoiceItem(AbstractTimeStampModel):
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")
+    item_id = models.CharField(max_length=20, verbose_name="ID")
+    item_name = models.CharField(max_length=1000, verbose_name="Назва товару")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Кількість")
+    price_netto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ціна нетто")
+    price_netto2 = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Ціна нетто 2")
+    tax_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="ПДВ %")
+    tax_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Сума ПДВ")
+    price_brutto = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ціна брутто")
+    current_car_vin = models.CharField(max_length=55, null=True, blank=True, verbose_name="VIN автомобіля")
+
+    class Meta:
+        ordering = ['item_id']
+        verbose_name = "Позиція фактури"
+        verbose_name_plural = "Позиції фактури"
+
+    def __str__(self):
+        return f"{self.item_id} - {self.item_name}"
 
 
 class Notifications(AbstractTimeStampModel):

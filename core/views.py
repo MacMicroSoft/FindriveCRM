@@ -16,7 +16,9 @@ from .forms import (
     OwnerForm, 
     ServiceForm, 
     OutlayFrom, 
-    CarServiceForm
+    CarServiceForm,
+    InvoiceUploadForm,
+    InvoiceItemForm
 )
 from .models import (
     Car, 
@@ -25,12 +27,18 @@ from .models import (
     Service, 
     Outlay, 
     CarServiceState,
-    ServiceEventSchema
+    ServiceEventSchema,
+    Invoice,
+    InvoiceItem
 )
 from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.core.exceptions import ValidationError
+from django.conf import settings
+from pathlib import Path
+import os
+from decimal import Decimal
 from .services import (
     create_car_with_photos, 
     update_car_with_photos, 
@@ -41,6 +49,8 @@ from .services import (
     update_outlay,
     save_or_update_car_service_state,
     create_service_events_from_services,
+    PDFCore,
+    decode_unicode_escapes,
 )
 from .constants import DEFAULT_SERVICE_SCHEMA
 
@@ -869,3 +879,292 @@ class ServiceEventSchemaDefaultView(LoginRequiredMixin, TemplateView):
         
         context['service_event_schema'] = default_schema
         return context
+
+
+class InvoiceListView(LoginRequiredMixin, ListView):
+    model = Invoice
+    template_name = "invoice/list.html"
+    context_object_name = "invoices"
+    paginate_by = 20
+
+    def get_queryset(self):
+        return Invoice.objects.prefetch_related('items').order_by('-created_at')
+
+
+class InvoiceUploadView(LoginRequiredMixin, View):
+    template_name = "invoice/upload.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {
+            "form": InvoiceUploadForm()
+        })
+
+    def post(self, request):
+        form = InvoiceUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return render(request, self.template_name, {"form": form})
+
+        pdf_file = form.cleaned_data["pdf_file"]
+        name = form.cleaned_data.get("name") or pdf_file.name
+
+        # ---------- save file ----------
+        upload_dir = Path(settings.MEDIA_ROOT) / "invoices"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        file_path = upload_dir / pdf_file.name
+        with open(file_path, "wb+") as f:
+            for chunk in pdf_file.chunks():
+                f.write(chunk)
+
+        # ---------- parse ----------
+        try:
+            parser = PDFCore(file_path)
+            parsed_data = parser.parse()
+
+            table_data = parsed_data.get("table", [])
+            if not table_data:
+                logger.warning("No table data found", extra={"parsed_data": parsed_data})
+                form.add_error(
+                    "pdf_file",
+                    "Не вдалося знайти позиції у фактурі. Формат PDF не підтримується."
+                )
+                return render(request, self.template_name, {"form": form})
+
+            # ---------- create invoice ----------
+            invoice = Invoice.objects.create(
+                name=name,
+                file_path=str(file_path.relative_to(settings.MEDIA_ROOT)),
+                invoice_data=parsed_data,
+            )
+
+            total_amount = Decimal("0")
+
+            def to_decimal(val, default="0"):
+                if not val:
+                    return Decimal(default)
+                if isinstance(val, (int, float)):
+                    return Decimal(str(val))
+                return Decimal(str(val).replace(" ", "").replace(",", "."))
+
+            # ---------- create items ----------
+            validation_errors_summary = {}
+            for row in table_data:
+                try:
+                    price_netto = to_decimal(row.get("price_netto"))
+                    tax_price = to_decimal(row.get("tax_price"))
+                    price_brutto = to_decimal(row.get("price_brutto"))
+                    
+                    # Clean item_name from Unicode escape sequences if any
+                    item_name = row.get("item_name", "")
+                    if item_name:
+                        # Decode any remaining Unicode escapes
+                        item_name = item_name.encode().decode('unicode_escape') if '\\u' in item_name else item_name
+                    
+                    item = InvoiceItem.objects.create(
+                        invoice=invoice,
+                        item_id=str(row.get("id")),
+                        item_name=item_name[:1000] if item_name else "",  # Ensure max length
+                        amount=to_decimal(row.get("amount", "1")),
+                        price_netto=price_netto,
+                        tax_percent=to_decimal(row.get("tax_percent", "23")),
+                        tax_price=tax_price,
+                        price_brutto=price_brutto,
+                        current_car_vin=row.get("current_car_vin"),
+                    )
+                    
+                    # Store validation errors if any
+                    if row.get("validation_errors"):
+                        validation_errors_summary[str(item.uuid)] = row["validation_errors"]
+
+                    total_amount += price_brutto
+
+                except Exception as e:
+                    logger.exception("Error creating invoice item", extra={"row": row})
+                    continue
+
+            invoice.invoice_amount = total_amount
+            invoice.save(update_fields=["invoice_amount"])
+            
+            # Store validation errors and total validation in invoice_data
+            if validation_errors_summary or parsed_data.get("total_validation_error"):
+                if not invoice.invoice_data:
+                    invoice.invoice_data = {}
+                invoice.invoice_data["validation_errors"] = validation_errors_summary
+                if parsed_data.get("total_validation_error"):
+                    invoice.invoice_data["total_validation_error"] = parsed_data["total_validation_error"]
+                invoice.save(update_fields=["invoice_data"])
+
+            return redirect("invoice-detail", pk=invoice.uuid)
+
+        except Exception as e:
+            logger.exception("Error parsing invoice PDF")
+            form.add_error("pdf_file", f"Помилка обробки PDF: {e}")
+            return render(request, self.template_name, {"form": form})
+
+
+class InvoiceDetailView(LoginRequiredMixin, DetailView):
+    model = Invoice
+    template_name = "invoice/detail.html"
+    context_object_name = "invoice"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        
+        # Handle PDF viewing/downloading
+        pdf_action = request.GET.get('pdf')
+        if pdf_action in ('view', 'download'):
+            from django.http import FileResponse, Http404, HttpResponse
+            from django.conf import settings
+            import os
+            
+            file_path = Path(settings.MEDIA_ROOT) / self.object.file_path
+            if not file_path.exists():
+                raise Http404("PDF файл не знайдено")
+            
+            filename = os.path.basename(self.object.file_path)
+            
+            # Read file content
+            with open(file_path, 'rb') as f:
+                file_content = f.read()
+            
+            # Create response
+            if pdf_action == 'download':
+                response = HttpResponse(file_content, content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            else:
+                response = HttpResponse(file_content, content_type='application/pdf')
+                response['Content-Disposition'] = f'inline; filename="{filename}"'
+                # Allow embedding in iframe - override middleware X-Frame-Options
+                response['X-Frame-Options'] = 'SAMEORIGIN'
+            
+            return response
+        
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Sort items by item_id numerically (ascending)
+        # Convert to list and sort by numeric value of item_id
+        items_list = list(self.object.items.all())
+        items_list.sort(key=lambda x: int(x.item_id) if x.item_id.isdigit() else float('inf'))
+        
+        # Decode Unicode escape sequences in item names for existing records
+        # Create a wrapper to store decoded names without modifying the model
+        class ItemWrapper:
+            def __init__(self, item):
+                self._item = item
+                # Always decode Unicode escapes in item_name (even if not visible in DB)
+                # This handles cases where text is stored correctly but displayed with escapes
+                if item.item_name:
+                    # Decode any Unicode escape sequences
+                    decoded_name = decode_unicode_escapes(item.item_name)
+                    # If decoding changed something, use decoded version
+                    if decoded_name != item.item_name:
+                        self.item_name = decoded_name
+                    else:
+                        self.item_name = item.item_name
+                else:
+                    self.item_name = item.item_name
+                
+            def __getattr__(self, name):
+                return getattr(self._item, name)
+        
+        items_list = [ItemWrapper(item) for item in items_list]
+        
+        context['items'] = items_list
+        context['form'] = InvoiceItemForm()
+        
+        # Get validation errors from invoice_data
+        validation_errors = {}
+        if self.object.invoice_data and isinstance(self.object.invoice_data, dict):
+            validation_errors = self.object.invoice_data.get("validation_errors", {})
+        context['validation_errors'] = validation_errors
+        
+        # Convert validation errors to JSON for JavaScript
+        import json
+        context['validation_errors_json'] = json.dumps(validation_errors)
+        
+        # Get total validation error and convert Decimal to float for display
+        total_validation_error = None
+        if self.object.invoice_data and isinstance(self.object.invoice_data, dict):
+            total_validation_error = self.object.invoice_data.get("total_validation_error")
+            if total_validation_error:
+                # Convert Decimal values to float for template display
+                if isinstance(total_validation_error, dict):
+                    total_validation_error = {
+                        k: float(v) if isinstance(v, (Decimal, int, float)) else v
+                        for k, v in total_validation_error.items()
+                    }
+        context['total_validation_error'] = total_validation_error
+        
+        return context
+
+
+class InvoiceItemUpdateView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            item = InvoiceItem.objects.get(uuid=pk)
+        except InvoiceItem.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'errors': {'__all__': ['Позицію не знайдено']}
+            }, status=404)
+
+        form = InvoiceItemForm(request.POST, instance=item)
+        
+        if form.is_valid():
+            form.save()
+            return JsonResponse({
+                'status': 'ok',
+                'message': 'Позицію успішно оновлено'
+            })
+        
+        return JsonResponse({
+            'status': 'error',
+            'errors': form.errors
+        }, status=400)
+
+
+class InvoiceItemDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            item = InvoiceItem.objects.get(uuid=pk)
+            invoice_uuid = item.invoice.uuid
+            item.delete()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'ok',
+                    'message': 'Позицію успішно видалено'
+                })
+            
+            return redirect('invoice-detail', pk=invoice_uuid)
+        except InvoiceItem.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'errors': {'__all__': ['Позицію не знайдено']}
+                }, status=404)
+            return redirect('invoice-list')
+
+
+class InvoiceDeleteView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            invoice = Invoice.objects.get(uuid=pk)
+            invoice.delete()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'ok',
+                    'message': 'Фактуру успішно видалено'
+                })
+            
+            return redirect('invoice-list')
+        except Invoice.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'errors': {'__all__': ['Фактуру не знайдено']}
+                }, status=404)
+            return redirect('invoice-list')

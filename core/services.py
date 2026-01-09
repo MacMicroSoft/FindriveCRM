@@ -7,6 +7,7 @@ from django.db.models.functions import Concat
 from .forms import OutlayFrom
 from django.db import transaction
 import pymupdf
+import pdfplumber
 from pathlib import Path
 import re
 
@@ -512,6 +513,63 @@ def update_outlay(uuid, form: OutlayFrom) -> Outlay:
     return outlay
 
 
+def to_float_pl(value: str) -> float:
+    """
+    Convert Polish number format to float.
+    '1 100,00' -> 1100.0
+    '1 000,00' -> 1000.0
+    """
+    if value is None:
+        return 0.0
+    value = value.replace("\u00a0", " ")
+    value = re.sub(r"[^\d,\.]", "", value)
+    value = value.replace(" ", "")
+    if "," in value:
+        value = value.replace(",", ".")
+    return float(value)
+
+
+def decode_unicode_escapes(text: str) -> str:
+    """
+    Decode Unicode escape sequences in text.
+    '\\u005C' -> '\\'
+    '\\u0022' -> '"'
+    Handles both raw strings with \\u and actual escape sequences stored in database.
+    """
+    if not text:
+        return text
+    
+    try:
+        # Replace Unicode escape sequences using regex
+        def replace_unicode(match):
+            code = int(match.group(1), 16)
+            return chr(code)
+        
+        # Pattern to match \uXXXX where XXXX is 4 hex digits
+        # This handles the literal string "\\u005C" as stored in database
+        pattern = r'\\u([0-9a-fA-F]{4})'
+        
+        # Check if text contains Unicode escape sequences
+        if '\\u' in text:
+            # Decode all \uXXXX sequences
+            text = re.sub(pattern, replace_unicode, text)
+        
+    except Exception as e:
+        logger.warning(f"Error decoding Unicode escapes: {e}")
+        # Fallback: manual replacement of common sequences
+        try:
+            text = text.replace('\\u005C', '\\')  # Backslash
+            text = text.replace('\\u0022', '"')    # Double quote
+            text = text.replace('\\u0027', "'")    # Single quote
+            text = text.replace('\\u000A', '\n')   # Newline
+            text = text.replace('\\u000D', '\r')   # Carriage return
+            text = text.replace('\\u0009', '\t')   # Tab
+        except Exception:
+            pass
+    
+    return text
+
+
 class PDFCore:
     TABLE_FIELDS = ('id', 'item_name', 'amount', 'price_netto', 'price_netto2', 'tax_percent', 'tax_price', 'price_brutto')
     REG_FIELDS = [
@@ -533,27 +591,6 @@ class PDFCore:
         self.__filepath: Path = Path(filepath)
         self.__data = {'table': []}
 
-
-    def get_table(self, string: str, string2: str, table_len: int) -> dict:
-        id_text_re = re.compile(r'^(\d+)\s*(.*)$', re.S)
-        car_vin_re = re.compile(r'[A-Z0-9]{5,}')
-
-        m1 = id_text_re.match(string.strip())
-        if m1:
-            id = m1.group(1)
-            name = m1.group(2).replace('\n', ' ').replace('\\', ', ')
-
-            prices = string2.rstrip('\n').split('\n')
-
-            raw_data = [id, name] + prices
-        else: return {}
-
-        if len(raw_data) != table_len:
-            return {}
-
-        return dict(zip(self.TABLE_FIELDS, raw_data)) | {'current_car_vin': car_vin_re.search(name).group(0)}
-
-
     def get_text_data(self, field: str|list, reg: re.Pattern|None, string: str) -> dict:
         if type(field) == str and type(reg) == re.Pattern:
             match = reg.search(string)
@@ -568,9 +605,103 @@ class PDFCore:
 
             return data
 
+    def _validate_row(self, row: dict) -> dict:
+        """Validate row calculations and return validation errors."""
+        errors = {}
+        tolerance = 0.01  # Tolerance for floating point comparison
+        
+        price_netto = row.get('price_netto', 0.0)
+        tax_price = row.get('tax_price', 0.0)
+        price_brutto = row.get('price_brutto', 0.0)
+        tax_percent = row.get('tax_percent', 0)
+        
+        # Check: price_netto + tax_price = price_brutto
+        expected_brutto = price_netto + tax_price
+        if abs(expected_brutto - price_brutto) > tolerance:
+            errors['price_brutto'] = f'Очікується {expected_brutto:.2f}, знайдено {price_brutto:.2f}'
+            errors['tax_price'] = 'Не відповідає розрахунку'
+        
+        # Check: price_netto * (1 + tax_percent/100) = price_brutto
+        if tax_percent > 0:
+            expected_brutto_from_percent = price_netto * (1 + tax_percent / 100)
+            if abs(expected_brutto_from_percent - price_brutto) > tolerance:
+                errors['tax_percent'] = f'Очікується {expected_brutto_from_percent:.2f}, знайдено {price_brutto:.2f}'
+                if 'price_brutto' not in errors:
+                    errors['price_brutto'] = 'Не відповідає розрахунку з ПДВ'
+        
+        return errors
+
+    def _extract_table_with_pdfplumber(self) -> list:
+        """Extract table data using pdfplumber."""
+        rows = []
+        car_vin_re = re.compile(r'[A-Z0-9]{5,}')
+
+        with pdfplumber.open(self.__filepath) as pdf:
+            for page_no, page in enumerate(pdf.pages, start=1):
+                logger.info("Processing page %d", page_no)
+
+                table = page.extract_table({
+                    "vertical_strategy": "lines",
+                    "horizontal_strategy": "lines",
+                    "intersection_tolerance": 5,
+                    "snap_tolerance": 5,
+                    "join_tolerance": 5,
+                })
+
+                if not table:
+                    logger.warning("No table found on page %d", page_no)
+                    continue
+
+                headers = [h.strip() if h else "" for h in table[0]]
+
+                if len(headers) < 8:
+                    logger.warning("Unexpected header format: %s", headers)
+                    continue
+
+                for raw in table[1:]:
+                    if not raw or not raw[0] or not raw[0].strip().isdigit():
+                        continue
+
+                    try:
+                        item_name = " ".join(filter(None, raw[1].split())) if raw[1] else ""
+                        # Decode Unicode escape sequences
+                        item_name = decode_unicode_escapes(item_name)
+                        # Truncate item_name to 1000 characters to avoid database error
+                        if len(item_name) > 1000:
+                            item_name = item_name[:997] + "..."
+                        
+                        row = {
+                            'id': int(raw[0]),
+                            'item_name': item_name,
+                            'amount': int(re.sub(r"[^\d]", "", raw[2])) if raw[2] else 1,
+                            'price_netto': to_float_pl(raw[3]) if raw[3] else 0.0,
+                            'price_netto2': to_float_pl(raw[4]) if raw[4] else 0.0,
+                            'tax_percent': int(re.sub(r"[^\d]", "", raw[5])) if raw[5] else 23,
+                            'tax_price': to_float_pl(raw[6]) if raw[6] else 0.0,
+                            'price_brutto': to_float_pl(raw[7]) if raw[7] else 0.0,
+                        }
+                        
+                        # Extract VIN if present in item_name
+                        vin_match = car_vin_re.search(item_name)
+                        if vin_match:
+                            row['current_car_vin'] = vin_match.group(0)
+                        
+                        # Validate row calculations
+                        validation_errors = self._validate_row(row)
+                        if validation_errors:
+                            row['validation_errors'] = validation_errors
+                        
+                        rows.append(row)
+
+                    except Exception as e:
+                        logger.warning("Skipped row %s (%s)", raw, e)
+
+        return rows
 
     def parse(self):
         self.__data = {'table': []}
+        
+        # Extract non-table data using pymupdf (existing logic)
         doc = pymupdf.open(self.__filepath)
 
         for page in doc:
@@ -604,21 +735,37 @@ class PDFCore:
                         continue
 
                     if isinstance(pattern_field, re.Pattern):
-                        match = pattern_field.match(line)
+                        # Skip table header pattern - we'll extract table with pdfplumber
                         i += 1
-                        if match:
-                            while i + 1 < n:
-                                row = self.get_table(
-                                    blocks_sorted[i][4],
-                                    blocks_sorted[i + 1][4],
-                                    len(self.TABLE_FIELDS)
-                                )
-                                if row:
-                                    self.__data['table'].append(row)
-                                    i += 2
-                                    continue
-                                break
-                            break
+                        break
+
+        # Extract table data using pdfplumber
+        try:
+            table_rows = self._extract_table_with_pdfplumber()
+            self.__data['table'] = table_rows
+            
+            # Calculate total from table and compare with PDF total
+            total_from_table = sum(row.get('price_brutto', 0.0) for row in table_rows)
+            pdf_total = self.__data.get('price_brutto') or self.__data.get('to_pay')
+            
+            if pdf_total:
+                # Convert PDF total to float if it's a string
+                if isinstance(pdf_total, str):
+                    pdf_total_float = to_float_pl(pdf_total)
+                else:
+                    pdf_total_float = float(pdf_total)
+                
+                tolerance = 0.01
+                if abs(total_from_table - pdf_total_float) > tolerance:
+                    self.__data['total_validation_error'] = {
+                        'expected': pdf_total_float,
+                        'found': total_from_table,
+                        'difference': abs(total_from_table - pdf_total_float)
+                    }
+            
+        except Exception as e:
+            logger.error("Error extracting table with pdfplumber: %s", e)
+            self.__data['table'] = []
 
         return self.__data
 

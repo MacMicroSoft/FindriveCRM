@@ -26,4 +26,10 @@ urlpatterns = [
     path("car-service-plan/create/", view.CarServiceCreate.as_view(), name="car-service-plan-create"),
     path("cars/<uuid:car_pk>/service-plan/", view.CarServiceDetailView.as_view(), name="car-service-plan-detail"),
     path("cars/<uuid:car_pk>/service-plan/delete/", view.CarServiceDeleteView.as_view(), name="car-service-plan-delete"),
+    path("invoices/", view.InvoiceListView.as_view(), name="invoice-list"),
+    path("invoices/upload/", view.InvoiceUploadView.as_view(), name="invoice-upload"),
+    path("invoices/<uuid:pk>/", view.InvoiceDetailView.as_view(), name="invoice-detail"),
+    path("invoices/<uuid:pk>/delete/", view.InvoiceDeleteView.as_view(), name="invoice-delete"),
+    path("invoice-items/<uuid:pk>/update/", view.InvoiceItemUpdateView.as_view(), name="invoice-item-update"),
+    path("invoice-items/<uuid:pk>/delete/", view.InvoiceItemDeleteView.as_view(), name="invoice-item-delete"),
 ]

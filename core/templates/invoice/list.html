@@ -1,0 +1,208 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Фактури{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; margin: 0;">Фактури</h1>
+        <a href="{% url 'invoice-upload' %}" style="background: #2563eb; color: white; padding: 0.625rem 1.25rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; text-decoration: none; transition: background 0.2s; white-space: nowrap;" 
+           onmouseover="this.style.background='#1d4ed8'" 
+           onmouseout="this.style.background='#2563eb'">
+            <svg style="width: 1rem; height: 1rem; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span>Завантажити фактуру</span>
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    {% if invoices %}
+        <div style="display: grid; gap: 1rem;">
+            {% for invoice in invoices %}
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; transition: all 0.2s; position: relative;"
+                 onmouseover="this.style.boxShadow='0 4px 6px -1px rgba(0, 0, 0, 0.1)'" 
+                 onmouseout="this.style.boxShadow='none'"
+                 id="invoice-card-{{ invoice.uuid }}">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div style="flex: 1; cursor: pointer;" onclick="window.location.href='{% url 'invoice-detail' pk=invoice.uuid %}'">
+                        <h3 style="color: #111827; font-weight: 600; font-size: 1.125rem; margin-bottom: 0.5rem;">
+                            {{ invoice.name }}
+                        </h3>
+                        <p style="color: #6b7280; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                            Створено: {{ invoice.created_at|date:"d.m.Y H:i" }}
+                        </p>
+                        {% if invoice.invoice_amount %}
+                        <p style="color: #111827; font-size: 1.25rem; font-weight: 700; margin-top: 0.5rem;">
+                            {{ invoice.invoice_amount|floatformat:2 }} PLN
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="{% url 'invoice-detail' pk=invoice.uuid %}" 
+                           style="display: flex; align-items: center; gap: 0.5rem; color: #6b7280; text-decoration: none; font-size: 0.75rem; padding: 0.375rem 0.75rem; border-radius: 0.375rem; transition: all 0.2s;"
+                           onmouseover="this.style.background='#f3f4f6'; this.style.color='#2563eb'"
+                           onmouseout="this.style.background='transparent'; this.style.color='#6b7280'">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                            <span>Переглянути</span>
+                        </a>
+                        <button type="button" 
+                                onclick="openDeleteInvoiceModal('{{ invoice.uuid }}', '{{ invoice.name }}')"
+                                style="display: flex; align-items: center; gap: 0.5rem; color: #dc2626; background: none; border: none; font-size: 0.75rem; cursor: pointer; padding: 0.375rem 0.75rem; border-radius: 0.375rem; transition: all 0.2s;"
+                                onmouseover="this.style.background='#fef2f2'; this.style.color='#b91c1c'"
+                                onmouseout="this.style.background='none'; this.style.color='#dc2626'">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            <span>Видалити</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 4rem; text-align: center;">
+            <svg style="width: 4rem; height: 4rem; margin: 0 auto 1rem; opacity: 0.3; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p style="color: #6b7280; margin-bottom: 0.5rem; font-size: 1.125rem; font-weight: 500;">Немає фактур</p>
+            <p style="color: #9ca3af; margin-bottom: 1rem; font-size: 0.875rem;">Завантажте PDF файл фактури для початку роботи</p>
+            <a href="{% url 'invoice-upload' %}" style="background: #2563eb; color: white; padding: 0.625rem 1.25rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; text-decoration: none; display: inline-block;">
+                Завантажити фактуру
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Delete Invoice Modal -->
+    <div id="deleteInvoiceModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem;" onclick="closeDeleteInvoiceModal()">
+        <div style="background: white; border-radius: 0.75rem; max-width: 28rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);" onclick="event.stopPropagation()">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 3rem; height: 3rem; border-radius: 9999px; background: #fef2f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="color: #111827; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem 0;">Видалити фактуру?</h3>
+                    <p style="color: #6b7280; font-size: 0.875rem; margin: 0;" id="deleteInvoiceDescription">Цю дію неможливо скасувати.</p>
+                </div>
+            </div>
+            <p style="color: #374151; font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                Ви впевнені, що хочете видалити цю фактуру? Всі дані будуть безповоротно видалені.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" 
+                        onclick="closeDeleteInvoiceModal()"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f9fafb'"
+                        onmouseout="this.style.background='white'">
+                    Скасувати
+                </button>
+                <button type="button" 
+                        onclick="deleteInvoiceAjax()"
+                        id="deleteInvoiceBtn"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#b91c1c'"
+                        onmouseout="this.style.background='#dc2626'">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Видалити
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentInvoiceUuid = null;
+        let currentInvoiceNameToDelete = '';
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function openDeleteInvoiceModal(invoiceUuid, invoiceName) {
+            currentInvoiceUuid = invoiceUuid;
+            currentInvoiceNameToDelete = invoiceName;
+            document.getElementById('deleteInvoiceDescription').textContent = `Фактура "${invoiceName}" буде видалена.`;
+            document.getElementById('deleteInvoiceModal').style.display = 'flex';
+        }
+
+        function closeDeleteInvoiceModal() {
+            document.getElementById('deleteInvoiceModal').style.display = 'none';
+        }
+
+        function deleteInvoiceAjax() {
+            if (!currentInvoiceUuid) return;
+
+            const btn = document.getElementById('deleteInvoiceBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<svg style="width: 1rem; height: 1rem; animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Видалення...';
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                             document.querySelector('meta[name=csrf-token]')?.content ||
+                             getCookie('csrftoken');
+
+            fetch(`/core/invoices/${currentInvoiceUuid}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+            .then(response => {
+                if (response.ok) {
+                    const card = document.getElementById(`invoice-card-${currentInvoiceUuid}`);
+                    if (card) {
+                        card.style.transition = 'opacity 0.3s, transform 0.3s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateX(-20px)';
+                        setTimeout(() => {
+                            card.remove();
+                        }, 300);
+                    } else {
+                        window.location.reload();
+                    }
+                    closeDeleteInvoiceModal();
+                } else {
+                    return response.json().then(errorData => {
+                        alert(`Помилка видалення: ${errorData.errors?.__all__?.[0] || 'Невідома помилка'}`);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Виникла помилка під час видалення фактури.');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('deleteInvoiceModal').style.display === 'flex') {
+                closeDeleteInvoiceModal();
+            }
+        });
+    </script>
+{% endblock %}
+

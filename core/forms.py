@@ -4,7 +4,9 @@ from .models import (
     Owner, 
     OutlayCategoryChoice, 
     Service, 
-    CarServiceState
+    CarServiceState,
+    Invoice,
+    InvoiceItem
 )
 
 class MultipleFileInput(forms.FileInput):
@@ -473,3 +475,82 @@ class CarServiceForm(forms.ModelForm):
             raise forms.ValidationError({'services_json': 'Додайте хоча б один сервіс'})
         
         return cleaned_data
+
+
+class InvoiceUploadForm(forms.Form):
+    pdf_file = forms.FileField(
+        label='PDF файл фактури',
+        widget=forms.FileInput(attrs={
+            'class': 'border_input w-full',
+            'accept': '.pdf',
+        })
+    )
+    name = forms.CharField(
+        max_length=55,
+        required=False,
+        label='Назва фактури',
+        widget=forms.TextInput(attrs={
+            'class': 'border_input w-full',
+            'placeholder': 'Автоматично з назви файлу'
+        })
+    )
+
+
+class InvoiceItemForm(forms.ModelForm):
+    class Meta:
+        model = InvoiceItem
+        fields = [
+            'item_id',
+            'item_name',
+            'amount',
+            'price_netto',
+            'price_netto2',
+            'tax_percent',
+            'tax_price',
+            'price_brutto',
+            'current_car_vin',
+        ]
+        widgets = {
+            'item_id': forms.TextInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'ID'
+            }),
+            'item_name': forms.TextInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'Назва товару'
+            }),
+            'amount': forms.NumberInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'Кількість',
+                'step': '0.01'
+            }),
+            'price_netto': forms.NumberInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'Ціна нетто',
+                'step': '0.01'
+            }),
+            'price_netto2': forms.NumberInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'Ціна нетто 2',
+                'step': '0.01'
+            }),
+            'tax_percent': forms.NumberInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'ПДВ %',
+                'step': '0.01'
+            }),
+            'tax_price': forms.NumberInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'Сума ПДВ',
+                'step': '0.01'
+            }),
+            'price_brutto': forms.NumberInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'Ціна брутто',
+                'step': '0.01'
+            }),
+            'current_car_vin': forms.TextInput(attrs={
+                'class': 'border_input w-full',
+                'placeholder': 'VIN автомобіля'
+            }),
+        }
