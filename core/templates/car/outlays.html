@@ -1,0 +1,335 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Витрати автомобіля{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0; flex-wrap: wrap;">
+            <svg style="width: 1.5rem; height: 1.5rem; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span>Витрати - {{ car.mark }} {{ car.model }} {{ car.year }}</span>
+        </h1>
+        <a href="{% url 'car-detail' pk=car.pk %}" style="color: #6b7280; text-decoration: none; font-size: 0.875rem; white-space: nowrap;">← Назад до автомобіля</a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <style>
+        .detail-container {
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        .detail-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        
+        .detail-card-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        @media (max-width: 768px) {
+            .detail-container {
+                padding: 0 0.75rem;
+            }
+            
+            .detail-card {
+                padding: 1.5rem !important;
+            }
+        }
+    </style>
+
+    <div class="detail-container">
+        <div class="detail-card">
+            <div class="detail-card-header" style="justify-content: space-between; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>Витрати</span>
+                    {% if outlays %}
+                    <span style="background: #dbeafe; color: #1e40af; font-size: 0.875rem; padding: 0.375rem 0.75rem; border-radius: 9999px; font-weight: 500;">
+                        {{ outlays|length }} {% if outlays|length == 1 %}витрата{% else %}витрат{% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    {% if outlays %}
+                    <a href="{% url 'car-outlays-export' pk=car.pk %}" 
+                       style="padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #10b981; background: #10b981; color: white; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+                       onmouseover="this.style.background='#059669'; this.style.borderColor='#059669'"
+                       onmouseout="this.style.background='#10b981'; this.style.borderColor='#10b981'">
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Скачати Excel
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem; font-weight: 500; transition: color 0.2s;" 
+                       onmouseover="this.style.color='#1d4ed8'"
+                       onmouseout="this.style.color='#2563eb'">
+                        <span>Всі витрати</span>
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            {% if outlays %}
+                <div style="display: grid; gap: 0.75rem;">
+                    {% for outlay in outlays %}
+                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; transition: all 0.2s; position: relative;" 
+                         onmouseover="this.style.boxShadow='0 4px 6px -1px rgba(0, 0, 0, 0.1)'" 
+                         onmouseout="this.style.boxShadow='none'"
+                         id="outlay-card-{{ outlay.uuid }}">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                            <div style="flex: 1; cursor: pointer;" onclick="window.location.href='{% url 'outlay_detail' pk=outlay.uuid %}'" title="Натисніть для перегляду деталей">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <span style="background: #dbeafe; color: #1e40af; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 500;">
+                                        {% if outlay.category == 'fuel' %}Паливо
+                                        {% elif outlay.category == 'parts' %}Запчастини
+                                        {% elif outlay.category == 'documents' %}Документи
+                                        {% elif outlay.category == 'another' %}{{ outlay.category_name|default:'Інше' }}
+                                        {% else %}{{ outlay.get_category_display|default:outlay.category }}
+                                        {% endif %}
+                                    </span>
+                                    {% if outlay.type == 'service' %}
+                                    <span style="background: #fef3c7; color: #92400e; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 500;">
+                                        Сервіс
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% if outlay.service_name %}
+                                <p style="color: #111827; font-weight: 500; margin-bottom: 0.25rem;">{{ outlay.service_name }}</p>
+                                {% endif %}
+                                {% if outlay.type == 'service' and outlay.name %}
+                                <p style="color: #111827; font-weight: 500; margin-bottom: 0.25rem; font-size: 0.9375rem;">{{ outlay.name }}</p>
+                                {% endif %}
+                                {% if outlay.comment %}
+                                <p style="color: #6b7280; font-size: 0.875rem; line-height: 1.5;">{{ outlay.comment|truncatewords:20 }}</p>
+                                {% elif outlay.description %}
+                                <p style="color: #6b7280; font-size: 0.875rem; line-height: 1.5;">{{ outlay.description|truncatewords:20 }}</p>
+                                {% endif %}
+                            </div>
+                            <div style="text-align: right; cursor: pointer;" onclick="window.location.href='{% url 'outlay_detail' pk=outlay.uuid %}'" title="Натисніть для перегляду деталей">
+                                <p style="color: #111827; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">
+                                    {% if outlay.amount.price_per_item and outlay.amount.item_count %}
+                                        {% if outlay.amount.full_price %}
+                                            {{ outlay.amount.price_per_item|floatformat:2 }}×{{ outlay.amount.item_count }} = {{ outlay.amount.full_price|floatformat:2 }} PLN
+                                        {% else %}
+                                            {{ outlay.amount.price_per_item|floatformat:2 }}×{{ outlay.amount.item_count }} PLN
+                                        {% endif %}
+                                    {% elif outlay.amount.full_price %}
+                                        {{ outlay.amount.full_price|floatformat:2 }} PLN
+                                    {% else %}
+                                        — PLN
+                                    {% endif %}
+                                </p>
+                                <p style="color: #9ca3af; font-size: 0.75rem;">
+                                    {% if outlay.created_at %}
+                                        {{ outlay.created_at|date:"d.m.Y" }}
+                                    {% else %}
+                                        {{ outlay.updated_at|date:"d.m.Y" }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid #f3f4f6;">
+                            <a href="{% url 'outlay_detail' pk=outlay.uuid %}" style="display: flex; align-items: center; gap: 0.5rem; color: #6b7280; text-decoration: none; font-size: 0.75rem; transition: color 0.2s;"
+                               onmouseover="this.style.color='#2563eb'"
+                               onmouseout="this.style.color='#6b7280'">
+                                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <span>Переглянути</span>
+                            </a>
+                            <button type="button" 
+                                    onclick="openDeleteOutlayModal('{{ outlay.uuid }}', '{% if outlay.name %}{{ outlay.name }}{% elif outlay.service_name %}{{ outlay.service_name }}{% else %}Витрата{% endif %}')"
+                                    style="display: flex; align-items: center; gap: 0.5rem; color: #dc2626; background: none; border: none; font-size: 0.75rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.375rem; transition: all 0.2s;"
+                                    onmouseover="this.style.background='#fef2f2'; this.style.color='#b91c1c'"
+                                    onmouseout="this.style.background='none'; this.style.color='#dc2626'">
+                                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                <span>Видалити</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if outlays_total > 0 %}
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 0.5rem; padding: 1.25rem; margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);">
+                    <span style="color: white; font-weight: 500; font-size: 0.9375rem;">Загальна сума витрат:</span>
+                    <span style="color: white; font-size: 1.5rem; font-weight: 700;">
+                        {{ outlays_total|floatformat:2 }} PLN
+                    </span>
+                </div>
+                {% endif %}
+            {% else %}
+                <div style="background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 3rem; text-align: center;">
+                    <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.75rem; opacity: 0.3; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p style="color: #6b7280; margin-bottom: 0.75rem; font-size: 0.9375rem;">Немає витрат для цього автомобіля</p>
+                    <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500;">Додати витрату</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Delete Outlay Modal -->
+    <div id="deleteOutlayModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem;" onclick="closeDeleteOutlayModal()">
+        <div style="background: white; border-radius: 0.75rem; max-width: 28rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);" onclick="event.stopPropagation()">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="width: 3rem; height: 3rem; border-radius: 9999px; background: #fef2f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div style="flex: 1;">
+                    <h3 style="color: #111827; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem 0;">Видалити витрату?</h3>
+                    <p style="color: #6b7280; font-size: 0.875rem; margin: 0;" id="deleteOutlayDescription">Цю дію неможливо скасувати.</p>
+                </div>
+            </div>
+            <p style="color: #374151; font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                Ви впевнені, що хочете видалити цю витрату? Всі дані будуть безповоротно видалені.
+            </p>
+            <div style="display: flex; gap: 0.75rem;">
+                <button type="button" 
+                        onclick="closeDeleteOutlayModal()"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;"
+                        onmouseover="this.style.background='#f9fafb'"
+                        onmouseout="this.style.background='white'">
+                    Скасувати
+                </button>
+                <button type="button" 
+                        onclick="deleteOutlayAjax()"
+                        id="deleteOutlayBtn"
+                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                        onmouseover="this.style.background='#b91c1c'"
+                        onmouseout="this.style.background='#dc2626'">
+                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Видалити
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentOutlayUuid = null;
+        
+        function openDeleteOutlayModal(outlayUuid, outlayName) {
+            currentOutlayUuid = outlayUuid;
+            const modal = document.getElementById('deleteOutlayModal');
+            const description = document.getElementById('deleteOutlayDescription');
+            
+            if (description && outlayName) {
+                description.textContent = `Витрата "${outlayName}" буде видалена.`;
+            }
+            
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        function closeDeleteOutlayModal() {
+            const modal = document.getElementById('deleteOutlayModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            currentOutlayUuid = null;
+        }
+        
+        function deleteOutlayAjax() {
+            if (!currentOutlayUuid) return;
+            
+            const btn = document.getElementById('deleteOutlayBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<svg style="width: 1rem; height: 1rem; animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Видалення...';
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                             document.querySelector('meta[name=csrf-token]')?.content ||
+                             getCookie('csrftoken');
+            
+            fetch(`/core/outlay/${currentOutlayUuid}/delete`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: new FormData()
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Remove the card from DOM
+                    const card = document.getElementById(`outlay-card-${currentOutlayUuid}`);
+                    if (card) {
+                        card.style.transition = 'opacity 0.3s, transform 0.3s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateX(-20px)';
+                        setTimeout(() => {
+                            card.remove();
+                            window.location.reload();
+                        }, 300);
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    throw new Error('Помилка видалення');
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                alert('Помилка при видаленні витрати. Спробуйте ще раз.');
+            });
+        }
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDeleteOutlayModal();
+            }
+        });
+        
+        // Helper function to get cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+{% endblock %}
+

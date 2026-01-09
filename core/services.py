@@ -390,25 +390,27 @@ def create_outlay(
     type: str,
     name: str,
     car: Car,  # Changed from cars: list[Car] to car: Car
-    price_per_item: float, 
-    item_count: int,
-    created_at,
-    full_price: int = None,
+    price_per_item: float = None, 
+    item_count: int = None,
+    created_at=None,
+    full_price: float = None,
     category: str = None,
     category_name: str = None,
     service_name: str = None,
     comment: str = None,
     description: str = None,  # For backward compatibility
 ) -> Outlay:
-    if full_price:
-        outlay_amout_obj: OutlayAmount = OutlayAmount.objects.create(
-            full_price=full_price
-        )
-    else:
-        outlay_amout_obj: OutlayAmount = OutlayAmount.objects.create(
-            price_per_item=price_per_item,
-            item_count=item_count
-        )
+    # Create OutlayAmount with all available data
+    # This ensures we preserve quantity, price per unit, and total for Excel export
+    amount_data = {}
+    if full_price is not None:
+        amount_data['full_price'] = full_price
+    if price_per_item is not None:
+        amount_data['price_per_item'] = price_per_item
+    if item_count is not None:
+        amount_data['item_count'] = item_count
+    
+    outlay_amout_obj: OutlayAmount = OutlayAmount.objects.create(**amount_data)
 
     # For service type, don't set category (it should be None)
     # For other type, set category if provided
@@ -771,6 +773,17 @@ class PDFCore:
 
 
 def create_car_service_plan(plan_schema: dict, current_mileage: int) -> list:
+    """
+    Створює розрахований план сервісів з визначеними статусами на основі поточного пробігу.
+    
+    Статуси:
+    - UNKNOWN: якщо last_service_km == 0
+    - CRITICAL: якщо пробіг перевищив next_service_km більш ніж на 20%
+    - IMPORTANT: якщо пробіг наближається до next_service_km (за 10% до або вже перевищив)
+    - NORMAL: якщо ще є час до наступного сервісу
+    """
+    from .models import ServiceStatusChoice
+    
     services = plan_schema.get("services")
 
     if not services:
@@ -785,13 +798,27 @@ def create_car_service_plan(plan_schema: dict, current_mileage: int) -> list:
         interval = service.get("interval_km", 0)
 
         if last_service == 0:
-            service["status"] = "UNKNOWN"
+            service["status"] = ServiceStatusChoice.UNKNOWN
             service["next_service"] = None
             result.append(service)
             continue
 
-        next_service = last_service + interval
-        service["next_service"] = next_service
+        # Обчислюємо next_service_km
+        next_service_km = last_service + interval
+        service["next_service"] = next_service_km
+
+        # Визначаємо статус на основі поточного пробігу та next_service_km
+        # Критично - якщо пробіг перевищив next_service_km більш ніж на 20%
+        # Важливо - якщо пробіг наближається до next_service_km (за 10% до або вже перевищив)
+        # В Нормі - якщо ще є час до наступного сервісу
+        if current_mileage >= next_service_km * 1.2:  # Перевищено більш ніж на 20%
+            service["status"] = ServiceStatusChoice.CRITICAL  # Критично
+        elif current_mileage >= next_service_km:  # Перевищено або досягнуто
+            service["status"] = ServiceStatusChoice.IMPORTANT  # Важливо
+        elif current_mileage > next_service_km - (interval * 0.1):  # За 10% до наступного сервісу
+            service["status"] = ServiceStatusChoice.IMPORTANT  # Важливо
+        else:
+            service["status"] = ServiceStatusChoice.NORMAL  # В Нормі
 
         result.append(service)
 

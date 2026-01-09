@@ -38,6 +38,51 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         
+        /* Tab Navigation Styles */
+        .tab-navigation {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e5e7eb;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .tab-button:hover {
+            color: #374151;
+            background: #f9fafb;
+        }
+        
+        .tab-button.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+            background: transparent;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
         .detail-card-header {
             font-size: 1.25rem;
             font-weight: 600;
@@ -115,6 +160,16 @@
             .detail-actions a,
             .detail-actions button {
                 width: 100%;
+            }
+            
+            .tab-navigation {
+                gap: 0.25rem;
+                margin-bottom: 1rem;
+            }
+            
+            .tab-button {
+                padding: 0.625rem 1rem;
+                font-size: 0.875rem;
             }
         }
         @media (max-width: 640px) {
@@ -201,7 +256,37 @@
     </style>
 
     <div class="detail-container">
-        <!-- Основна інформація про автомобіль -->
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <a href="{% url 'car-outlays' pk=object.pk %}" class="tab-button" id="tab-outlays" style="text-decoration: none;">
+                <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Витрати
+                {% if outlays %}
+                <span style="background: #dbeafe; color: #1e40af; font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px; font-weight: 600;">
+                    {{ outlays|length }}
+                </span>
+                {% endif %}
+            </a>
+            {% if car_service_state %}
+            <a href="{% url 'car-service-plan-detail' car_pk=object.pk %}" class="tab-button" id="tab-service-plan" style="text-decoration: none;">
+                <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Схема сервісного плану
+            </a>
+            {% else %}
+            <a href="{% url 'car-service-plan-create' %}" class="tab-button" id="tab-service-plan" style="text-decoration: none;">
+                <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Схема сервісного плану
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Основна інформація про автомобіль (завжди видима) -->
         <div class="detail-card">
             <h2 class="detail-card-header">
                 <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,164 +366,7 @@
         </div>
     </div>
 
-    <!-- Outlays Section -->
-    <div class="detail-card">
-        <div class="detail-card-header" style="justify-content: space-between; margin-bottom: 1.5rem;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                <span>Витрати</span>
-                {% if outlays %}
-                <span style="background: #dbeafe; color: #1e40af; font-size: 0.875rem; padding: 0.375rem 0.75rem; border-radius: 9999px; font-weight: 500;">
-                    {{ outlays|length }} {% if outlays|length == 1 %}витрата{% else %}витрат{% endif %}
-                </span>
-                {% endif %}
-            </div>
-            <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem; font-weight: 500; transition: color 0.2s;" 
-               onmouseover="this.style.color='#1d4ed8'"
-               onmouseout="this.style.color='#2563eb'">
-                <span>Всі витрати</span>
-                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </a>
-        </div>
 
-        {% if outlays %}
-            <div style="display: grid; gap: 0.75rem;">
-                {% for outlay in outlays %}
-                <div style="background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; transition: all 0.2s; position: relative;" 
-                     onmouseover="this.style.boxShadow='0 4px 6px -1px rgba(0, 0, 0, 0.1)'" 
-                     onmouseout="this.style.boxShadow='none'"
-                     id="outlay-card-{{ outlay.uuid }}">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
-                        <div style="flex: 1; cursor: pointer;" onclick="window.location.href='{% url 'outlay_detail' pk=outlay.uuid %}'">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <span style="background: #dbeafe; color: #1e40af; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 500;">
-                                    {% if outlay.category == 'fuel' %}Паливо
-                                    {% elif outlay.category == 'parts' %}Запчастини
-                                    {% elif outlay.category == 'documents' %}Документи
-                                    {% elif outlay.category == 'another' %}{{ outlay.category_name|default:'Інше' }}
-                                    {% else %}{{ outlay.get_category_display|default:outlay.category }}
-                                    {% endif %}
-                                </span>
-                                {% if outlay.type == 'service' %}
-                                <span style="background: #fef3c7; color: #92400e; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-weight: 500;">
-                                    Сервіс
-                                </span>
-                                {% endif %}
-                            </div>
-                            {% if outlay.service_name %}
-                            <p style="color: #111827; font-weight: 500; margin-bottom: 0.25rem;">{{ outlay.service_name }}</p>
-                            {% endif %}
-                            {% if outlay.type == 'service' and outlay.name %}
-                            <p style="color: #111827; font-weight: 500; margin-bottom: 0.25rem; font-size: 0.9375rem;">{{ outlay.name }}</p>
-                            {% endif %}
-                            {% if outlay.comment %}
-                            <p style="color: #6b7280; font-size: 0.875rem; line-height: 1.5;">{{ outlay.comment|truncatewords:20 }}</p>
-                            {% elif outlay.description %}
-                            <p style="color: #6b7280; font-size: 0.875rem; line-height: 1.5;">{{ outlay.description|truncatewords:20 }}</p>
-                            {% endif %}
-                        </div>
-                        <div style="text-align: right; cursor: pointer;" onclick="window.location.href='{% url 'outlay_detail' pk=outlay.uuid %}'">
-                            <p style="color: #111827; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">
-                                {% if outlay.amount.price_per_item and outlay.amount.item_count %}
-                                    {% if outlay.amount.full_price %}
-                                        {{ outlay.amount.price_per_item|floatformat:2 }}×{{ outlay.amount.item_count }} = {{ outlay.amount.full_price|floatformat:2 }} PLN
-                                    {% else %}
-                                        {{ outlay.amount.price_per_item|floatformat:2 }}×{{ outlay.amount.item_count }} PLN
-                                    {% endif %}
-                                {% elif outlay.amount.full_price %}
-                                    {{ outlay.amount.full_price|floatformat:2 }} PLN
-                                {% else %}
-                                    — PLN
-                                {% endif %}
-                            </p>
-                            <p style="color: #9ca3af; font-size: 0.75rem;">
-                                {% if outlay.created_at %}
-                                    {{ outlay.created_at|date:"d.m.Y" }}
-                                {% else %}
-                                    {{ outlay.updated_at|date:"d.m.Y" }}
-                                {% endif %}
-                            </p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid #f3f4f6;">
-                        <a href="{% url 'outlay_detail' pk=outlay.uuid %}" style="display: flex; align-items: center; gap: 0.5rem; color: #6b7280; text-decoration: none; font-size: 0.75rem; transition: color 0.2s;"
-                           onmouseover="this.style.color='#2563eb'"
-                           onmouseout="this.style.color='#6b7280'">
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                            </svg>
-                            <span>Редагувати</span>
-                        </a>
-                        <button type="button" 
-                                onclick="openDeleteOutlayModal('{{ outlay.uuid }}', '{% if outlay.name %}{{ outlay.name }}{% elif outlay.service_name %}{{ outlay.service_name }}{% else %}Витрата{% endif %}')"
-                                style="display: flex; align-items: center; gap: 0.5rem; color: #dc2626; background: none; border: none; font-size: 0.75rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.375rem; transition: all 0.2s;"
-                                onmouseover="this.style.background='#fef2f2'; this.style.color='#b91c1c'"
-                                onmouseout="this.style.background='none'; this.style.color='#dc2626'">
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                            <span>Видалити</span>
-                        </button>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% if outlays_total > 0 %}
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 0.5rem; padding: 1.25rem; margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);">
-                <span style="color: white; font-weight: 500; font-size: 0.9375rem;">Загальна сума витрат:</span>
-                <span style="color: white; font-size: 1.5rem; font-weight: 700;">
-                    {{ outlays_total|floatformat:2 }} PLN
-                </span>
-            </div>
-            {% endif %}
-        {% else %}
-            <div style="background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 3rem; text-align: center;">
-                <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.75rem; opacity: 0.3; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                <p style="color: #6b7280; margin-bottom: 0.75rem; font-size: 0.9375rem;">Немає витрат для цього автомобіля</p>
-                <a href="{% url 'outlay' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500;">Додати витрату</a>
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- Схема сервісного плану -->
-    <div class="detail-card">
-        <h2 class="detail-card-header">
-            <svg style="width: 1.5rem; height: 1.5rem; color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-            </svg>
-            Схема сервісного плану
-        </h2>
-        {% if car_service_state %}
-            <div style="margin-bottom: 1rem;">
-                <div class="detail-row">
-                    <span class="detail-label">Пробіг при створенні:</span>
-                    <span class="detail-value">{{ car_service_state.mileage }} км</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Оновлено:</span>
-                    <span class="detail-value">{{ car_service_state.updated_at|date:"d.m.Y H:i" }}</span>
-                </div>
-            </div>
-            <div class="detail-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-                <a href="{% url 'car-service-plan-detail' car_pk=object.pk %}" class="btn btn-primary">Переглянути схему</a>
-                <button onclick="openDeleteServicePlanModal('{{ object.pk }}')" class="btn btn-danger">Видалити схему</button>
-            </div>
-        {% else %}
-            <div style="background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 3rem; text-align: center;">
-                <svg style="width: 3rem; height: 3rem; margin: 0 auto 0.75rem; opacity: 0.3; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-                <p style="color: #6b7280; margin-bottom: 0.75rem; font-size: 0.9375rem;">Схема сервісного плану не створена</p>
-                <a href="{% url 'car-service-plan-create' %}" style="color: #2563eb; text-decoration: none; font-size: 0.875rem; font-weight: 500;">Створити схему</a>
-            </div>
-        {% endif %}
-    </div>
 
     <!-- Дії -->
     <div class="detail-card">
@@ -458,46 +386,6 @@
 
     {% include 'components/edit_car_form.html' %}
     {% include 'components/delete_car_modal.html' %}
-
-    <!-- Delete Outlay Modal -->
-    <div id="deleteOutlayModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem;" onclick="closeDeleteOutlayModal()">
-        <div style="background: white; border-radius: 0.75rem; max-width: 28rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);" onclick="event.stopPropagation()">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <div style="width: 3rem; height: 3rem; border-radius: 9999px; background: #fef2f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <svg style="width: 1.5rem; height: 1.5rem; color: #dc2626;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                    </svg>
-                </div>
-                <div style="flex: 1;">
-                    <h3 style="color: #111827; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem 0;">Видалити витрату?</h3>
-                    <p style="color: #6b7280; font-size: 0.875rem; margin: 0;" id="deleteOutlayDescription">Цю дію неможливо скасувати.</p>
-                </div>
-            </div>
-            <p style="color: #374151; font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;">
-                Ви впевнені, що хочете видалити цю витрату? Всі дані будуть безповоротно видалені.
-            </p>
-            <div style="display: flex; gap: 0.75rem;">
-                <button type="button" 
-                        onclick="closeDeleteOutlayModal()"
-                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer; transition: all 0.2s;"
-                        onmouseover="this.style.background='#f9fafb'"
-                        onmouseout="this.style.background='white'">
-                    Скасувати
-                </button>
-                <button type="button" 
-                        onclick="deleteOutlayAjax()"
-                        id="deleteOutlayBtn"
-                        style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #dc2626; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
-                        onmouseover="this.style.background='#b91c1c'"
-                        onmouseout="this.style.background='#dc2626'">
-                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                    Видалити
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Delete Service Plan Modal -->
     <div id="deleteServicePlanModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem;" onclick="closeDeleteServicePlanModal()">
@@ -540,86 +428,6 @@
     </div>
 
     <script>
-        let currentOutlayUuid = null;
-        
-        function openDeleteOutlayModal(outlayUuid, outlayName) {
-            currentOutlayUuid = outlayUuid;
-            const modal = document.getElementById('deleteOutlayModal');
-            const description = document.getElementById('deleteOutlayDescription');
-            
-            if (description && outlayName) {
-                description.textContent = `Витрата "${outlayName}" буде видалена.`;
-            }
-            
-            if (modal) {
-                modal.style.display = 'flex';
-            }
-        }
-        
-        function closeDeleteOutlayModal() {
-            const modal = document.getElementById('deleteOutlayModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-            currentOutlayUuid = null;
-        }
-        
-        function deleteOutlayAjax() {
-            if (!currentOutlayUuid) return;
-            
-            const btn = document.getElementById('deleteOutlayBtn');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<svg style="width: 1rem; height: 1rem; animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Видалення...';
-            
-            // Get CSRF token
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                             document.querySelector('meta[name=csrf-token]')?.content ||
-                             getCookie('csrftoken');
-            
-            fetch(`/core/outlay/${currentOutlayUuid}/delete`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                body: new FormData() // Empty form data, no validation needed
-            })
-            .then(response => {
-                if (response.ok) {
-                    // Remove the card from DOM
-                    const card = document.getElementById(`outlay-card-${currentOutlayUuid}`);
-                    if (card) {
-                        card.style.transition = 'opacity 0.3s, transform 0.3s';
-                        card.style.opacity = '0';
-                        card.style.transform = 'translateX(-20px)';
-                        setTimeout(() => {
-                            card.remove();
-                            window.location.reload();
-                        }, 300);
-                    } else {
-                        window.location.reload();
-                    }
-                } else {
-                    throw new Error('Помилка видалення');
-                }
-            })
-            .catch(error => {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                alert('Помилка при видаленні витрати. Спробуйте ще раз.');
-            });
-        }
-        
-        // Close modal on Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeDeleteOutlayModal();
-                closeDeleteServicePlanModal();
-            }
-        });
-        
         // Service Plan Delete Modal Functions
         let currentCarPk = null;
         
@@ -734,6 +542,12 @@
             
             editForm.action = `/core/cars/update/${carId}/`;
             editModal.style.display = "flex";
+        }
+        
+        // Tab Navigation Functions (not needed anymore, but keeping for compatibility)
+        function switchTab(tabName) {
+            // This function is no longer needed as tabs are now links
+            // Keeping for backward compatibility
         }
     </script>
 {% endblock %}

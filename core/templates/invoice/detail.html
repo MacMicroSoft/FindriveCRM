@@ -362,9 +362,32 @@
                             </span>
                         </td>
                         <td>
-                            <span class="editable-cell" data-field="current_car_vin" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
-                                {{ item.current_car_vin|default:"—" }}
-                            </span>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="editable-cell" data-field="current_car_vin" data-uuid="{{ item.uuid }}" onclick="editCell(this)">
+                                    {{ item.current_car_vin|default:"—" }}
+                                </span>
+                                {% if car_matches %}
+                                    {% for item_uuid, car_match in car_matches.items %}
+                                        {% if item_uuid == item.uuid|stringformat:"s" %}
+                                            {% if car_match.car_found == False %}
+                                                <span style="color: #dc2626; font-size: 0.75rem;" title="Машину не знайдено">
+                                                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                </span>
+                                            {% elif car_match.car_uuid %}
+                                                <a href="{% url 'car-detail' pk=car_match.car_uuid %}" 
+                                                   style="color: #10b981; text-decoration: none; display: flex; align-items: center;"
+                                                   title="Знайдено машину: {{ car_match.car_name }}">
+                                                    <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
                         </td>
                         <td>
                             <span class="data-validity-badge" 

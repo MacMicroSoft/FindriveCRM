@@ -5,7 +5,6 @@ from .models import (
     OutlayCategoryChoice, 
     Service, 
     CarServiceState,
-    Invoice,
     InvoiceItem
 )
 
@@ -392,6 +391,12 @@ class CarServiceForm(forms.ModelForm):
             raise forms.ValidationError("Масив сервісів не може бути порожнім")
         
         required_fields = ['name', 'interval_km', 'last_service_km']
+        # Get mileage from form data (field-specific clean methods run before full clean)
+        mileage_raw = self.data.get('mileage')
+        try:
+            mileage = float(mileage_raw) if mileage_raw else None
+        except (ValueError, TypeError):
+            mileage = None
         
         for i, service in enumerate(services):
             if not isinstance(service, dict):
@@ -428,6 +433,13 @@ class CarServiceForm(forms.ModelForm):
             if not isinstance(service.get('last_service_km'), (int, float)) or service.get('last_service_km') < 0:
                 raise forms.ValidationError(f"Сервіс {i+1}: last_service_km повинен бути невід'ємним числом")
             
+            # Валідація: останній сервіс не може бути більший за пробіг
+            last_service_km = service.get('last_service_km', 0)
+            if mileage and last_service_km > mileage:
+                raise forms.ValidationError(
+                    f"Сервіс {i+1}: Останній сервіс ({last_service_km} км) не може бути більший за поточний пробіг ({mileage} км)"
+                )
+            
             # Валідація статусу
             if 'status' in service:
                 from .models import ServiceStatusChoice
@@ -436,9 +448,6 @@ class CarServiceForm(forms.ModelForm):
                     raise forms.ValidationError(
                         f"Сервіс {i+1}: Невірний статус '{service['status']}'. Дозволені статуси: {', '.join(valid_statuses)}"
                     )
-            
-            # Валідація: останній сервіс не може бути більший за пробіг
-            # (mileage буде перевірено в clean методі, де є доступ до нього)
         
         return services
     
@@ -480,18 +489,19 @@ class CarServiceForm(forms.ModelForm):
 class InvoiceUploadForm(forms.Form):
     pdf_file = forms.FileField(
         label='PDF файл фактури',
+        required=True,
         widget=forms.FileInput(attrs={
-            'class': 'border_input w-full',
             'accept': '.pdf',
+            'class': 'border_input w-full'
         })
     )
     name = forms.CharField(
-        max_length=55,
-        required=False,
         label='Назва фактури',
+        required=False,
+        max_length=55,
         widget=forms.TextInput(attrs={
             'class': 'border_input w-full',
-            'placeholder': 'Автоматично з назви файлу'
+            'placeholder': 'Назва фактури (необов\'язково)'
         })
     )
 
@@ -508,49 +518,43 @@ class InvoiceItemForm(forms.ModelForm):
             'tax_percent',
             'tax_price',
             'price_brutto',
-            'current_car_vin',
+            'current_car_vin'
         ]
         widgets = {
             'item_id': forms.TextInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'ID'
+                'maxlength': 20
             }),
             'item_name': forms.TextInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'Назва товару'
+                'maxlength': 1000
             }),
             'amount': forms.NumberInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'Кількість',
                 'step': '0.01'
             }),
             'price_netto': forms.NumberInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'Ціна нетто',
                 'step': '0.01'
             }),
             'price_netto2': forms.NumberInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'Ціна нетто 2',
                 'step': '0.01'
             }),
             'tax_percent': forms.NumberInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'ПДВ %',
                 'step': '0.01'
             }),
             'tax_price': forms.NumberInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'Сума ПДВ',
                 'step': '0.01'
             }),
             'price_brutto': forms.NumberInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'Ціна брутто',
                 'step': '0.01'
             }),
             'current_car_vin': forms.TextInput(attrs={
                 'class': 'border_input w-full',
-                'placeholder': 'VIN автомобіля'
-            }),
+                'maxlength': 55
+            })
         }

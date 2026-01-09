@@ -1,4 +1,6 @@
 import logging
+import io
+import tempfile
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
@@ -29,13 +31,19 @@ from .models import (
     CarServiceState,
     ServiceEventSchema,
     Invoice,
-    InvoiceItem
+    InvoiceItem,
+    OutlayTypeChoice,
+    OutlayCategoryChoice,
+    Notifications
 )
+from .services import create_outlay
+from django.utils import timezone
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.db import transaction
 from pathlib import Path
 import os
 from decimal import Decimal
@@ -51,6 +59,7 @@ from .services import (
     create_service_events_from_services,
     PDFCore,
     decode_unicode_escapes,
+    create_car_service_plan,
 )
 from .constants import DEFAULT_SERVICE_SCHEMA
 
@@ -588,16 +597,63 @@ class OutlayView(LoginRequiredMixin, View):
 
 class OutlatDetailView(LoginRequiredMixin, View):
     template_name = "outlay_detail.html"
+    view_template_name = "outlay_detail_view.html"
 
     def get(self, request, pk):
         outlay = get_outlay(pk)
-        form = get_outlay_form_data(pk)
-        context = {
-            "outlay": outlay,
-            "outlay_uuid": pk,
-            "form": form,
-        }
-        return render(request, self.template_name, context)
+        
+        # Try to find related invoice from comment
+        invoice = None
+        if outlay.comment and "Автоматично створено з фактури:" in outlay.comment:
+            import re
+            match = re.search(r'Автоматично створено з фактури:\s*([^,]+)', outlay.comment)
+            if match:
+                invoice_name = match.group(1).strip()
+                try:
+                    invoice = Invoice.objects.filter(name=invoice_name).first()
+                except Exception as e:
+                    logger.exception(f"Error finding invoice for outlay {pk}: {e}")
+        
+        # Handle invoice PDF download
+        if request.GET.get('download_invoice') == 'true' and invoice:
+            from django.http import Http404, HttpResponse
+            from django.conf import settings
+            import os
+            
+            file_path = Path(settings.MEDIA_ROOT) / invoice.file_path
+            if not file_path.exists():
+                raise Http404("PDF файл не знайдено")
+            
+            filename = os.path.basename(invoice.file_path)
+            
+            with open(file_path, 'rb') as f:
+                file_content = f.read()
+            
+            response = HttpResponse(file_content, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        
+        # Check if edit mode is requested
+        edit_mode = request.GET.get('edit', 'false').lower() == 'true'
+        
+        if edit_mode:
+            # Show edit form
+            form = get_outlay_form_data(pk)
+            context = {
+                "outlay": outlay,
+                "outlay_uuid": pk,
+                "form": form,
+                "invoice": invoice,
+            }
+            return render(request, self.template_name, context)
+        else:
+            # Show view mode
+            context = {
+                "outlay": outlay,
+                "outlay_uuid": pk,
+                "invoice": invoice,
+            }
+            return render(request, self.view_template_name, context)
 
     def post(self, request, pk):
         try:
@@ -644,12 +700,15 @@ class OutlatDetailView(LoginRequiredMixin, View):
                 cars = list(updated_outlay.cars.all())
                 car_uuid = cars[0].uuid if cars else None
                 
-                # Check if request is from car detail page
+                # Check if request is from car detail page or car outlays page
                 referer = request.META.get('HTTP_REFERER', '')
                 if car_uuid and '/core/cars/' in referer:
+                    if '/outlays/' in referer:
+                        return redirect('car-outlays', pk=car_uuid)
                     return redirect('car-detail', pk=car_uuid)
                 
-                return redirect('outlay')
+                # Redirect to view mode after successful update
+                return redirect('outlay_detail', pk=pk)
             except Exception as e:
                 logger.error(f"Error updating outlay {pk}: {str(e)}")
                 form.add_error(None, f'Помилка оновлення витрати: {str(e)}')
@@ -761,7 +820,7 @@ class CarServiceCreate(LoginRequiredMixin, CreateView):
         try:
             car = form.cleaned_data['car']
             service_plan = form.cleaned_data['service_plan']
-            services_json = form.cleaned_data.get('services_json')  # Отримуємо список сервісів напряму
+            services_json = form.cleaned_data.get('services_json')
             mileage = form.cleaned_data.get('mileage') or car.mileage
             
             old_mileage = car.mileage
@@ -772,7 +831,6 @@ class CarServiceCreate(LoginRequiredMixin, CreateView):
                 car.save(update_fields=['mileage'])
                 mileage_updated = True
             
-            # Зберігаємо service_plan в CarServiceState (для зберігання схеми/шаблону)
             try:
                 car_service_state = save_or_update_car_service_state(
                     car=car,
@@ -801,11 +859,14 @@ class CarServiceCreate(LoginRequiredMixin, CreateView):
                         "errors": {"__all__": [str(exc)]},
                     }, status=400)
 
+            from django.urls import reverse
+            
             response_data = {
                 "status": "ok",
                 "schema": car_service_state.service_plan,
                 "car_id": str(car.uuid),
                 "message": "Service plan schema calculated successfully!",
+                "redirect_url": reverse("car-detail", kwargs={"pk": car.uuid}),
             }
             
             if mileage_updated:
@@ -858,6 +919,272 @@ class CarServiceDetailView(LoginRequiredMixin, DetailView):
     def get_object(self):
         car_pk = self.kwargs.get('car_pk')
         return get_object_or_404(CarServiceState, car__pk=car_pk)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        car_service_plan = self.object
+        
+        # Get current mileage from the car
+        current_mileage = car_service_plan.car.mileage
+        
+        # Calculate overdue for each service
+        services = car_service_plan.service_plan.get('services', [])
+        for service in services:
+            next_service = service.get('next_service')
+            if next_service and current_mileage > next_service:
+                service['overdue_km'] = current_mileage - next_service
+            else:
+                service['overdue_km'] = None
+        
+        context['current_mileage'] = current_mileage
+        return context
+
+
+class CarServiceUpdateView(LoginRequiredMixin, View):
+    """View для оновлення конкретного сервісу - встановлює last_service_km на поточний пробіг"""
+    
+    @transaction.atomic
+    def post(self, request, car_pk, service_key):
+        try:
+            car_service_state = CarServiceState.objects.select_for_update().get(car__pk=car_pk)
+            car = car_service_state.car
+            current_mileage = car.mileage
+            
+            # Знайти сервіс за key
+            services = car_service_state.service_plan.get('services', [])
+            service_found = False
+            
+            for service in services:
+                if service.get('key') == service_key:
+                    # Оновити last_service_km на поточний пробіг
+                    service['last_service_km'] = current_mileage
+                    service_found = True
+                    break
+            
+            if not service_found:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Сервіс не знайдено'
+                }, status=404)
+            
+            # Перерахувати всі сервіси з новими даними
+            updated_services = create_car_service_plan(
+                plan_schema={'services': services},
+                current_mileage=current_mileage
+            )
+            
+            # Оновити service_plan
+            car_service_state.service_plan['services'] = updated_services
+            car_service_state.save(update_fields=['service_plan', 'updated_at'])
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Сервіс успішно оновлено'
+                })
+            
+            return redirect('car-service-plan-detail', car_pk=car_pk)
+            
+        except CarServiceState.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Схема сервісного плану не знайдена'
+                }, status=404)
+            return redirect('car-detail', pk=car_pk)
+        except Exception as e:
+            logger.exception(f"Error updating service: {e}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Помилка оновлення: {str(e)}'
+                }, status=500)
+            return redirect('car-service-plan-detail', car_pk=car_pk)
+
+
+class CarOutlaysView(LoginRequiredMixin, DetailView):
+    model = Car
+    template_name = "car/outlays.html"
+    context_object_name = "car"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Get outlays for this car
+        outlays = Outlay.objects.filter(cars=self.object).select_related('amount').order_by('-created_at', '-updated_at')
+        context["outlays"] = outlays
+        
+        # Calculate total outlay amount
+        total = 0
+        for outlay in outlays:
+            if outlay.amount.full_price:
+                total += float(outlay.amount.full_price)
+            elif outlay.amount.price_per_item and outlay.amount.item_count:
+                total += float(outlay.amount.price_per_item) * int(outlay.amount.item_count)
+        context["outlays_total"] = total
+        
+        return context
+
+
+class CarOutlaysExportView(LoginRequiredMixin, View):
+    """Export car outlays to Excel for Financial Director and Accountant"""
+    
+    def get(self, request, pk):
+        try:
+            car = Car.objects.get(uuid=pk)
+        except Car.DoesNotExist:
+            return redirect('cars')
+        
+        # Get outlays for this car
+        outlays = Outlay.objects.filter(cars=car).select_related('amount').order_by('created_at')
+        
+        # Create Excel file
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+            from django.http import HttpResponse
+            from datetime import datetime
+            
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Витрати"
+            
+            # Header style
+            header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF", size=12)
+            border_style = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # Headers for Financial Director and Accountant
+            headers = [
+                "Дата",
+                "Тип витрати",
+                "Категорія",
+                "Назва витрати",
+                "Сервіс",
+                "Автомобіль",
+                "VIN код",
+                "Номерний знак",
+                "Кількість",
+                "Ціна за одиницю (PLN)",
+                "Загальна сума (PLN)",
+                "ПДВ %",
+                "Сума ПДВ (PLN)",
+                "Коментар",
+                "Створено",
+                "Оновлено"
+            ]
+            
+            # Write headers
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_num, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border_style
+            
+            # Write data
+            for row_num, outlay in enumerate(outlays, 2):
+                car_obj = outlay.cars.first()
+                
+                # Calculate values from OutlayAmount structure
+                # Priority: use what's stored, calculate if needed
+                price_per_item = float(outlay.amount.price_per_item) if outlay.amount.price_per_item else None
+                item_count = float(outlay.amount.item_count) if outlay.amount.item_count else None
+                total_price = float(outlay.amount.full_price) if outlay.amount.full_price else None
+                
+                # If total_price is missing but we have price_per_item and item_count, calculate it
+                if not total_price and price_per_item and item_count:
+                    total_price = price_per_item * item_count
+                
+                # If price_per_item is missing but we have total_price and item_count, calculate it
+                if not price_per_item and total_price and item_count and item_count > 0:
+                    price_per_item = total_price / item_count
+                
+                # If item_count is missing but we have total_price and price_per_item, calculate it
+                if not item_count and total_price and price_per_item and price_per_item > 0:
+                    item_count = total_price / price_per_item
+                
+                # Extract tax info if available (from comment or other sources)
+                tax_percent = None
+                tax_price = None
+                if outlay.comment:
+                    import re
+                    tax_match = re.search(r'ПДВ[:\s]+(\d+(?:\.\d+)?)', outlay.comment, re.IGNORECASE)
+                    if tax_match:
+                        tax_percent = float(tax_match.group(1))
+                
+                # Get display values
+                type_display = dict(OutlayTypeChoice.choices).get(outlay.type, outlay.type)
+                category_display = ""
+                if outlay.category:
+                    category_display = dict(OutlayCategoryChoice.choices).get(outlay.category, outlay.category)
+                elif outlay.category_name:
+                    category_display = outlay.category_name
+                
+                row_data = [
+                    outlay.created_at.strftime("%d.%m.%Y") if outlay.created_at else "",
+                    type_display,
+                    category_display,
+                    outlay.name or "",
+                    outlay.service_name or "",
+                    f"{car_obj.mark} {car_obj.model} {car_obj.year}" if car_obj else "",
+                    car_obj.vin_code if car_obj else "",
+                    car_obj.license_plate if car_obj else "",
+                    item_count if item_count else "",
+                    price_per_item if price_per_item else "",
+                    total_price if total_price else "",
+                    tax_percent if tax_percent else "",
+                    tax_price if tax_price else "",
+                    outlay.comment or "",
+                    outlay.created_at.strftime("%d.%m.%Y %H:%M") if outlay.created_at else "",
+                    outlay.updated_at.strftime("%d.%m.%Y %H:%M") if outlay.updated_at else "",
+                ]
+                
+                for col_num, value in enumerate(row_data, 1):
+                    cell = ws.cell(row=row_num, column=col_num, value=value)
+                    cell.border = border_style
+                    if col_num in [9, 10, 11, 12, 13]:  # Numeric columns
+                        cell.alignment = Alignment(horizontal='right', vertical='center')
+                    else:
+                        cell.alignment = Alignment(horizontal='left', vertical='center')
+            
+            # Auto-adjust column widths
+            for col_num, header in enumerate(headers, 1):
+                column_letter = get_column_letter(col_num)
+                max_length = len(header)
+                for row in ws[column_letter]:
+                    if row.value:
+                        max_length = max(max_length, len(str(row.value)))
+                ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
+            
+            # Freeze first row
+            ws.freeze_panes = 'A2'
+            
+            # Create response
+            response = HttpResponse(
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            filename = f"Витрати_{car.mark}_{car.model}_{car.year}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            wb.save(response)
+            return response
+            
+        except ImportError:
+            # If openpyxl is not installed, return error message
+            from django.contrib import messages
+            messages.error(request, 'Бібліотека openpyxl не встановлена. Встановіть її для експорту Excel.')
+            return redirect('car-outlays', pk=pk)
+        except Exception as e:
+            logger.exception(f"Error exporting outlays to Excel: {e}")
+            from django.contrib import messages
+            messages.error(request, f'Помилка експорту: {str(e)}')
+            return redirect('car-outlays', pk=pk)
 
 
 class ServiceEventSchemaDefaultView(LoginRequiredMixin, TemplateView):
@@ -948,6 +1275,37 @@ class InvoiceUploadView(LoginRequiredMixin, View):
 
             # ---------- create items ----------
             validation_errors_summary = {}
+            SERVICE_GAS_UUID = "63d70638-32be-4959-8496-598a0c651f9d"
+            car_matches = {}  # Store car matches for UI display
+            
+            # Get ServiceGas
+            try:
+                service_gas = Service.objects.get(uuid=SERVICE_GAS_UUID)
+            except Service.DoesNotExist:
+                logger.warning(f"ServiceGas with UUID {SERVICE_GAS_UUID} not found")
+                service_gas = None
+            
+            def find_car_by_vin_or_plate(vin_or_plate):
+                """Find car by VIN code or license plate"""
+                if not vin_or_plate:
+                    return None
+                
+                vin_or_plate = vin_or_plate.strip()
+                if not vin_or_plate:
+                    return None
+                
+                # Try to find by VIN code first
+                car = Car.objects.filter(vin_code__iexact=vin_or_plate).first()
+                if car:
+                    return car
+                
+                # Try to find by license plate
+                car = Car.objects.filter(license_plate__iexact=vin_or_plate).first()
+                if car:
+                    return car
+                
+                return None
+            
             for row in table_data:
                 try:
                     price_netto = to_decimal(row.get("price_netto"))
@@ -960,6 +1318,8 @@ class InvoiceUploadView(LoginRequiredMixin, View):
                         # Decode any remaining Unicode escapes
                         item_name = item_name.encode().decode('unicode_escape') if '\\u' in item_name else item_name
                     
+                    current_car_vin = row.get("current_car_vin")
+                    
                     item = InvoiceItem.objects.create(
                         invoice=invoice,
                         item_id=str(row.get("id")),
@@ -969,8 +1329,43 @@ class InvoiceUploadView(LoginRequiredMixin, View):
                         tax_percent=to_decimal(row.get("tax_percent", "23")),
                         tax_price=tax_price,
                         price_brutto=price_brutto,
-                        current_car_vin=row.get("current_car_vin"),
+                        current_car_vin=current_car_vin,
                     )
+                    
+                    # Try to find car and create outlay
+                    car = None
+                    if current_car_vin:
+                        car = find_car_by_vin_or_plate(current_car_vin)
+                        if car:
+                            car_matches[str(item.uuid)] = {
+                                'car_uuid': str(car.uuid),
+                                'car_name': f"{car.mark} {car.model} {car.year}",
+                                'vin_or_plate': current_car_vin
+                            }
+                            
+                            # Create outlay for this item
+                            if service_gas:
+                                try:
+                                    outlay = create_outlay(
+                                        type='service',
+                                        name=item_name[:255] if item_name else f"Витрата з фактури {invoice.name}",
+                                        car=car,
+                                        price_per_item=float(price_netto),
+                                        item_count=float(item.amount),
+                                        created_at=invoice.created_at or timezone.now(),
+                                        full_price=float(price_brutto),
+                                        service_name=service_gas.name,
+                                        comment=f"Автоматично створено з фактури: {invoice.name}, позиція: {item.item_id}",
+                                    )
+                                    logger.info(f"Created outlay {outlay.uuid} for car {car.uuid} from invoice item {item.uuid}")
+                                except Exception as e:
+                                    logger.exception(f"Error creating outlay for invoice item {item.uuid}: {e}")
+                        else:
+                            # Car not found
+                            car_matches[str(item.uuid)] = {
+                                'car_found': False,
+                                'vin_or_plate': current_car_vin
+                            }
                     
                     # Store validation errors if any
                     if row.get("validation_errors"):
@@ -985,13 +1380,16 @@ class InvoiceUploadView(LoginRequiredMixin, View):
             invoice.invoice_amount = total_amount
             invoice.save(update_fields=["invoice_amount"])
             
-            # Store validation errors and total validation in invoice_data
-            if validation_errors_summary or parsed_data.get("total_validation_error"):
+            # Store validation errors, total validation, and car matches in invoice_data
+            if validation_errors_summary or parsed_data.get("total_validation_error") or car_matches:
                 if not invoice.invoice_data:
                     invoice.invoice_data = {}
-                invoice.invoice_data["validation_errors"] = validation_errors_summary
+                if validation_errors_summary:
+                    invoice.invoice_data["validation_errors"] = validation_errors_summary
                 if parsed_data.get("total_validation_error"):
                     invoice.invoice_data["total_validation_error"] = parsed_data["total_validation_error"]
+                if car_matches:
+                    invoice.invoice_data["car_matches"] = car_matches
                 invoice.save(update_fields=["invoice_data"])
 
             return redirect("invoice-detail", pk=invoice.uuid)
@@ -1000,6 +1398,164 @@ class InvoiceUploadView(LoginRequiredMixin, View):
             logger.exception("Error parsing invoice PDF")
             form.add_error("pdf_file", f"Помилка обробки PDF: {e}")
             return render(request, self.template_name, {"form": form})
+
+
+class NotificationsView(LoginRequiredMixin, TemplateView):
+    template_name = "notifications/list.html"
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Try to get real car data, fallback to mock if not found
+        try:
+            car = Car.objects.get(uuid='acb3a277-7f5a-4fb1-876b-7a147d9fe64e')
+            default_car_uuid = str(car.uuid)
+            default_license_plate = car.license_plate or 'WPI0316N'
+        except Car.DoesNotExist:
+            default_car_uuid = 'acb3a277-7f5a-4fb1-876b-7a147d9fe64e'
+            default_license_plate = 'WPI0316N'
+        
+        # Get some real cars for variety
+        real_cars = list(Car.objects.all()[:5])
+        car_index = 0
+        
+        # Helper function to get car UUID as string
+        def get_car_uuid_str(index):
+            if real_cars and len(real_cars) > index:
+                return str(real_cars[index % len(real_cars)].uuid)
+            return default_car_uuid
+        
+        # Helper function to get car license plate
+        def get_car_license_plate(index):
+            if real_cars and len(real_cars) > index:
+                car = real_cars[index % len(real_cars)]
+                return car.license_plate if car.license_plate else default_license_plate
+            return default_license_plate
+        
+        # Helper function to get overdue service info for a car
+        def get_overdue_service_info(car_uuid_str):
+            try:
+                car = Car.objects.get(uuid=car_uuid_str)
+                current_mileage = car.mileage
+                
+                try:
+                    car_service_state = CarServiceState.objects.get(car=car)
+                    services = car_service_state.service_plan.get('services', [])
+                    
+                    # Find overdue services
+                    overdue_services = []
+                    for service in services:
+                        next_service = service.get('next_service')
+                        if next_service and current_mileage > next_service:
+                            overdue_km = current_mileage - next_service
+                            overdue_services.append({
+                                'name': service.get('name', 'Невідомий сервіс'),
+                                'overdue_km': overdue_km,
+                                'next_service': next_service,
+                                'current_mileage': current_mileage,
+                            })
+                    
+                    if overdue_services:
+                        # Return the most overdue service
+                        most_overdue = max(overdue_services, key=lambda x: x['overdue_km'])
+                        return most_overdue
+                except CarServiceState.DoesNotExist:
+                    pass
+            except Car.DoesNotExist:
+                pass
+            return None
+        
+        # Mock data for notifications (fake data as requested)
+        mock_notifications = [
+            {
+                'message': 'Користувачу Іван Петренко надіслано прохання оновити свій пробіг',
+                'message_type': 'mileage_update_request',
+                'date': '11.01.2026',
+                'time': '14:30',
+                'icon': 'info',
+                'color': '#2563eb',
+                'car_uuid': get_car_uuid_str(0),
+                'car_license_plate': get_car_license_plate(0),
+            },
+            {
+                'message': 'Користувач Олександр Коваленко успішно оновив пробіг',
+                'message_type': 'mileage_updated',
+                'date': '11.01.2026',
+                'time': '13:15',
+                'icon': 'success',
+                'color': '#10b981',
+                'car_uuid': get_car_uuid_str(1),
+                'car_license_plate': get_car_license_plate(1),
+            },
+        ]
+        
+        # Add service warning notifications with real overdue data
+        service_warning_cars = [
+            (default_car_uuid, default_license_plate, 'Марія Сидоренко', '10.01.2026', '16:45', 'масла'),
+            (get_car_uuid_str(2), get_car_license_plate(2), 'Дмитро Мельник', '10.01.2026', '11:20', 'фільтра повітря'),
+            (default_car_uuid, default_license_plate, 'Андрій Бондаренко', '09.01.2026', '10:15', 'фільтра повітря'),
+        ]
+        
+        for car_uuid, license_plate, user_name, date, time, service_name in service_warning_cars:
+            overdue_info = get_overdue_service_info(car_uuid)
+            if overdue_info:
+                message = f'Користувачу {user_name} надіслано попередження про скору заміну {service_name}'
+                message += f' ({overdue_info["name"]})'
+            else:
+                message = f'Користувачу {user_name} надіслано попередження про скору заміну {service_name}'
+            
+            notification = {
+                'message': message,
+                'message_type': 'service_warning',
+                'date': date,
+                'time': time,
+                'icon': 'warning',
+                'color': '#f59e0b',
+                'car_uuid': car_uuid,
+                'car_license_plate': license_plate,
+            }
+            
+            if overdue_info:
+                notification['overdue_service'] = overdue_info
+            
+            mock_notifications.append(notification)
+        
+        # Add more mock notifications
+        mock_notifications.extend([
+            {
+                'message': 'Користувач Наталія Шевченко успішно оновив пробіг',
+                'message_type': 'mileage_updated',
+                'date': '09.01.2026',
+                'time': '15:30',
+                'icon': 'success',
+                'color': '#10b981',
+                'car_uuid': get_car_uuid_str(3),
+                'car_license_plate': get_car_license_plate(3),
+            },
+            {
+                'message': 'Користувач Сергій Ткаченко успішно оновив пробіг',
+                'message_type': 'mileage_updated',
+                'date': '08.01.2026',
+                'time': '09:45',
+                'icon': 'success',
+                'color': '#10b981',
+                'car_uuid': get_car_uuid_str(4),
+                'car_license_plate': get_car_license_plate(4),
+            },
+            {
+                'message': 'Користувачу Олена Лисенко надіслано прохання оновити свій пробіг',
+                'message_type': 'mileage_update_request',
+                'date': '08.01.2026',
+                'time': '14:00',
+                'icon': 'info',
+                'color': '#2563eb',
+                'car_uuid': default_car_uuid,
+                'car_license_plate': default_license_plate,
+            },
+        ])
+        
+        context['notifications'] = mock_notifications
+        return context
 
 
 class InvoiceDetailView(LoginRequiredMixin, DetailView):
@@ -1079,6 +1635,15 @@ class InvoiceDetailView(LoginRequiredMixin, DetailView):
         if self.object.invoice_data and isinstance(self.object.invoice_data, dict):
             validation_errors = self.object.invoice_data.get("validation_errors", {})
         context['validation_errors'] = validation_errors
+        
+        # Get car matches from invoice_data and convert UUID keys to strings for template
+        car_matches = {}
+        if self.object.invoice_data and isinstance(self.object.invoice_data, dict):
+            raw_car_matches = self.object.invoice_data.get("car_matches", {})
+            # Convert keys to strings if they're not already
+            for key, value in raw_car_matches.items():
+                car_matches[str(key)] = value
+        context['car_matches'] = car_matches
         
         # Convert validation errors to JSON for JavaScript
         import json

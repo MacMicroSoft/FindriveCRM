@@ -425,16 +425,8 @@
                 if (data.status === 'ok') {
                     // Показати попередження, якщо є
                     if (data.warning) {
-                        document.getElementById('warningText').textContent = data.warning;
-                        document.getElementById('warningSection').style.display = 'block';
-                    } else {
-                        document.getElementById('warningSection').style.display = 'none';
+                        alert(data.warning);
                     }
-                    
-                    // Показати результат
-                    document.getElementById('resultSection').style.display = 'block';
-                    document.getElementById('resultJson').textContent = JSON.stringify(data.schema, null, 2);
-                    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
                     
                     // Оновити originalMileage після успішного збереження
                     const carSelect = document.querySelector('[name="car"]');
@@ -443,6 +435,14 @@
                         originalMileage = parseInt(mileageInput.value);
                         carsMileage[carSelect.value] = originalMileage;
                         mileageChanged = false;
+                    }
+                    
+                    // Перенаправити на сторінку деталей автомобіля
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                    } else if (data.car_id) {
+                        // Fallback: побудувати URL вручну
+                        window.location.href = `/core/cars/${data.car_id}/`;
                     }
                 } else {
                     // Показати помилки

@@ -1,0 +1,249 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Деталі витрати{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0; flex-wrap: wrap;">
+            <a href="{% url 'outlay' %}" style="color: #6b7280; text-decoration: none; display: flex; align-items: center; flex-shrink: 0;">
+                <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <span>Деталі витрати</span>
+        </h1>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            {% if invoice %}
+            <a href="{% url 'outlay_detail' pk=outlay_uuid %}?download_invoice=true" 
+               style="padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+               onmouseover="this.style.background='#f9fafb'"
+               onmouseout="this.style.background='white'">
+                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Скачати фактуру
+            </a>
+            {% endif %}
+            <button onclick="openEditModal()" 
+                    style="padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #2563eb; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;"
+                    onmouseover="this.style.background='#1d4ed8'"
+                    onmouseout="this.style.background='#2563eb'">
+                <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Редагувати
+            </button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <style>
+        .detail-container {
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        
+        .detail-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        
+        .detail-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid #f3f4f6;
+            align-items: center;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9375rem;
+        }
+        
+        .detail-value {
+            color: #111827;
+            font-size: 0.9375rem;
+            word-break: break-word;
+        }
+        
+        .editable-field {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        
+        .editable-field:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+        
+        .editable-field.editing {
+            background: white;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .detail-row {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+
+    <div class="detail-container">
+        <div class="detail-card">
+            <h2 style="font-size: 1.25rem; font-weight: 600; color: #111827; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f3f4f6;">
+                Основна інформація
+            </h2>
+            
+            <div class="detail-row">
+                <span class="detail-label">Автомобіль:</span>
+                <span class="detail-value">
+                    {% with car=outlay.cars.first %}
+                        {% if car %}
+                            <a href="{% url 'car-detail' pk=car.uuid %}" style="color: #2563eb; text-decoration: none;">
+                                {{ car.mark }} {{ car.model }} {{ car.year }} ({{ car.license_plate }})
+                            </a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    {% endwith %}
+                </span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Тип витрати:</span>
+                <span class="detail-value editable-field" data-field="type" data-uuid="{{ outlay.uuid }}" onclick="editField(this)">
+                    {{ outlay.get_type_display }}
+                </span>
+            </div>
+            
+            {% if outlay.category %}
+            <div class="detail-row">
+                <span class="detail-label">Категорія:</span>
+                <span class="detail-value editable-field" data-field="category" data-uuid="{{ outlay.uuid }}" onclick="editField(this)">
+                    {{ outlay.get_category_display }}
+                </span>
+            </div>
+            {% endif %}
+            
+            {% if outlay.category_name %}
+            <div class="detail-row">
+                <span class="detail-label">Власна підкатегорія:</span>
+                <span class="detail-value editable-field" data-field="category_name" data-uuid="{{ outlay.uuid }}" onclick="editField(this)">
+                    {{ outlay.category_name }}
+                </span>
+            </div>
+            {% endif %}
+            
+            {% if outlay.service_name %}
+            <div class="detail-row">
+                <span class="detail-label">Сервіс:</span>
+                <span class="detail-value editable-field" data-field="service_name" data-uuid="{{ outlay.uuid }}" onclick="editField(this)">
+                    {{ outlay.service_name }}
+                </span>
+            </div>
+            {% endif %}
+            
+            {% if outlay.name %}
+            <div class="detail-row">
+                <span class="detail-label">Назва витрати:</span>
+                <span class="detail-value editable-field" data-field="name" data-uuid="{{ outlay.uuid }}" onclick="editField(this)">
+                    {{ outlay.name }}
+                </span>
+            </div>
+            {% endif %}
+            
+            <div class="detail-row">
+                <span class="detail-label">Дата:</span>
+                <span class="detail-value editable-field" data-field="date" data-uuid="{{ outlay.uuid }}" onclick="editField(this)">
+                    {{ outlay.created_at|date:"d.m.Y" }}
+                </span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Вартість:</span>
+                <span class="detail-value">
+                    {% if outlay.amount.full_price %}
+                        {{ outlay.amount.full_price|floatformat:2 }} PLN
+                    {% elif outlay.amount.price_per_item and outlay.amount.item_count %}
+                        {{ outlay.amount.price_per_item|floatformat:2 }} × {{ outlay.amount.item_count }} PLN
+                    {% else %}
+                        —
+                    {% endif %}
+                </span>
+            </div>
+            
+            {% if outlay.comment %}
+            <div class="detail-row" style="grid-template-columns: 1fr;">
+                <div>
+                    <span class="detail-label" style="display: block; margin-bottom: 0.5rem;">Коментар:</span>
+                    <span class="detail-value editable-field" data-field="comment" data-uuid="{{ outlay.uuid }}" onclick="editField(this)" style="display: block; white-space: pre-wrap;">
+                        {{ outlay.comment }}
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="detail-row">
+                <span class="detail-label">Створено:</span>
+                <span class="detail-value">{{ outlay.created_at|date:"d.m.Y H:i" }}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Оновлено:</span>
+                <span class="detail-value">{{ outlay.updated_at|date:"d.m.Y H:i" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 50; align-items: center; justify-content: center; padding: 1rem;" onclick="closeEditModal()">
+        <div style="background: white; border-radius: 0.75rem; max-width: 32rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);" onclick="event.stopPropagation()">
+            <h3 style="color: #111827; font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem;">Редагувати поле</h3>
+            <form id="editForm" method="POST" action="{% url 'outlay_detail' pk=outlay.uuid %}">
+                {% csrf_token %}
+                <input type="hidden" name="field" id="editFieldName">
+                <div id="editFieldContainer"></div>
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" onclick="closeEditModal()" style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: 1px solid #d1d5db; background: white; color: #374151; cursor: pointer;">
+                        Скасувати
+                    </button>
+                    <button type="submit" style="flex: 1; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; border: none; background: #2563eb; color: white; cursor: pointer;">
+                        Зберегти
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditModal() {
+            // Redirect to edit page
+            window.location.href = "{% url 'outlay_detail' pk=outlay.uuid %}?edit=true";
+        }
+        
+        function editField(element) {
+            // Redirect to edit page
+            window.location.href = "{% url 'outlay_detail' pk=outlay.uuid %}?edit=true";
+        }
+    </script>
+{% endblock %}
+

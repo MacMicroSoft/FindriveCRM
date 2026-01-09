@@ -24,6 +24,10 @@
                 <span class="detail-value" style="color: #6b7280;">{{ car_service_plan.mileage }} км</span>
             </div>
             <div class="detail-row" style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
+                <span class="detail-label" style="font-weight: 500; color: #374151;">Поточний пробіг:</span>
+                <span class="detail-value" style="color: #111827; font-weight: 600;">{{ current_mileage }} км</span>
+            </div>
+            <div class="detail-row" style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
                 <span class="detail-label" style="font-weight: 500; color: #374151;">Оновлено:</span>
                 <span class="detail-value" style="color: #6b7280;">{{ car_service_plan.updated_at|date:"d.m.Y H:i" }}</span>
             </div>
@@ -53,38 +57,103 @@
                             <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">Key: {{ service.key }}</p>
                             {% endif %}
                         </div>
-                        {% if service.status %}
-                        <span style="padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; 
-                            {% if service.status == 'CRITICAL' %}background: #fee2e2; color: #991b1b;
-                            {% elif service.status == 'IMPORTANT' %}background: #fef2f2; color: #dc2626;
-                            {% elif service.status == 'NORMAL' %}background: #d1fae5; color: #065f46;
-                            {% elif service.status == 'UNKNOWN' %}background: #f3f4f6; color: #374151;
-                            {% else %}background: #f3f4f6; color: #374151;{% endif %}">
-                            {% if service.status == 'CRITICAL' %}Критично
-                            {% elif service.status == 'IMPORTANT' %}Важливо
-                            {% elif service.status == 'NORMAL' %}В Нормі
-                            {% elif service.status == 'UNKNOWN' %}Невідомо
-                            {% else %}{{ service.status }}{% endif %}
-                        </span>
-                        {% endif %}
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            {% if service.status %}
+                            <span style="padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; 
+                                {% if service.status == 'CRITICAL' %}background: #fee2e2; color: #991b1b;
+                                {% elif service.status == 'IMPORTANT' %}background: #fef2f2; color: #dc2626;
+                                {% elif service.status == 'NORMAL' %}background: #d1fae5; color: #065f46;
+                                {% elif service.status == 'UNKNOWN' %}background: #f3f4f6; color: #374151;
+                                {% else %}background: #f3f4f6; color: #374151;{% endif %}">
+                                {% if service.status == 'CRITICAL' %}Дуже Важливо
+                                {% elif service.status == 'IMPORTANT' %}Важливо
+                                {% elif service.status == 'NORMAL' %}Норма
+                                {% elif service.status == 'UNKNOWN' %}Невідомо
+                                {% else %}{{ service.status }}{% endif %}
+                            </span>
+                            {% endif %}
+                            {% if service.key %}
+                            <form method="post" action="{% url 'car-service-update' car_pk=car_service_plan.car.pk service_key=service.key %}" class="service-update-form" style="margin: 0;" data-service-key="{{ service.key }}">
+                                {% csrf_token %}
+                                <button type="submit" class="service-update-btn" style="padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; border: 1px solid #10b981; background: #10b981; color: white; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.25rem;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                                    <svg style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Повідомити про заміну
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; font-size: 0.875rem;">
-                        {% if service.interval_km %}
-                        <div>
-                            <span style="color: #6b7280;">Інтервал:</span>
-                            <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ service.interval_km }} км</span>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                            {% if service.interval_km %}
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb;">
+                                <div style="width: 2rem; height: 2rem; border-radius: 0.375rem; background: #dbeafe; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg style="width: 1.25rem; height: 1.25rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.125rem;">Інтервал</div>
+                                    <div style="font-size: 0.9375rem; font-weight: 600; color: #111827;">{{ service.interval_km }} км</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if service.last_service_km %}
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb;">
+                                <div style="width: 2rem; height: 2rem; border-radius: 0.375rem; background: #d1fae5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg style="width: 1.25rem; height: 1.25rem; color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.125rem;">Останній сервіс</div>
+                                    <div style="font-size: 0.9375rem; font-weight: 600; color: #111827;">{{ service.last_service_km }} км</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if service.next_service %}
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb;">
+                                <div style="width: 2rem; height: 2rem; border-radius: 0.375rem; background: #fef3c7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg style="width: 1.25rem; height: 1.25rem; color: #f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.125rem;">Наступний сервіс</div>
+                                    <div style="font-size: 0.9375rem; font-weight: 600; color: #111827;">{{ service.next_service }} км</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if service.next_service and current_mileage and service.last_service_km %}
+                        <div style="margin-top: 0.5rem;" class="service-progress" 
+                             data-current="{{ current_mileage }}" 
+                             data-last="{{ service.last_service_km }}" 
+                             data-next="{{ service.next_service }}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.75rem; color: #6b7280; font-weight: 500;">Прогрес до наступного сервісу</span>
+                                <span class="progress-percent" style="font-size: 0.75rem; color: #374151; font-weight: 600;"></span>
+                            </div>
+                            <div style="width: 100%; height: 0.5rem; background: #e5e7eb; border-radius: 9999px; overflow: hidden;">
+                                <div class="progress-bar" style="height: 100%; background: #10b981; width: 0%; transition: width 0.3s ease, background 0.3s ease;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">
+                                <span>{{ current_mileage }} км</span>
+                                <span>{{ service.next_service }} км</span>
+                            </div>
                         </div>
                         {% endif %}
-                        {% if service.last_service_km %}
-                        <div>
-                            <span style="color: #6b7280;">Останній сервіс:</span>
-                            <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ service.last_service_km }} км</span>
-                        </div>
-                        {% endif %}
-                        {% if service.next_service %}
-                        <div>
-                            <span style="color: #6b7280;">Наступний сервіс:</span>
-                            <span style="color: #111827; font-weight: 500; margin-left: 0.5rem;">{{ service.next_service }} км</span>
+                        {% if service.overdue_km %}
+                        <div style="margin-top: 0.5rem; padding: 0.75rem; background: #fef2f2; border-left: 4px solid #dc2626; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <svg style="width: 1.25rem; height: 1.25rem; color: #dc2626; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.75rem; color: #991b1b; font-weight: 500; margin-bottom: 0.125rem;">Прострочення</div>
+                                <div style="font-size: 0.9375rem; color: #dc2626; font-weight: 600;">{{ service.overdue_km }} км</div>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -112,6 +181,283 @@
                 gap: 0.25rem;
             }
         }
+        
+        /* Modal styles */
+        .service-confirm-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .service-confirm-modal.active {
+            display: flex;
+        }
+        
+        .service-confirm-modal-content {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            max-width: 28rem;
+            width: 100%;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .service-confirm-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .service-confirm-modal-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background: #dbeafe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .service-confirm-modal-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+        
+        .service-confirm-modal-body {
+            color: #374151;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+        
+        .service-confirm-modal-service-name {
+            font-weight: 600;
+            color: #111827;
+            margin-top: 0.5rem;
+        }
+        
+        .service-confirm-modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        
+        .service-confirm-modal-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .service-confirm-modal-btn-cancel {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .service-confirm-modal-btn-cancel:hover {
+            background: #e5e7eb;
+        }
+        
+        .service-confirm-modal-btn-confirm {
+            background: #10b981;
+            color: white;
+        }
+        
+        .service-confirm-modal-btn-confirm:hover {
+            background: #059669;
+        }
+        
+        .service-confirm-modal-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
+    
+    <!-- Confirmation Modal -->
+    <div id="serviceConfirmModal" class="service-confirm-modal">
+        <div class="service-confirm-modal-content">
+            <div class="service-confirm-modal-header">
+                <div class="service-confirm-modal-icon">
+                    <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="service-confirm-modal-title">Підтвердити заміну сервісу</h3>
+            </div>
+            <div class="service-confirm-modal-body">
+                <p>Поточний пробіг <strong id="confirmCurrentMileage">{{ current_mileage }} км</strong> буде встановлено як останній сервіс для:</p>
+                <p class="service-confirm-modal-service-name" id="confirmServiceName"></p>
+            </div>
+            <div class="service-confirm-modal-actions">
+                <button type="button" class="service-confirm-modal-btn service-confirm-modal-btn-cancel" id="confirmModalCancel">Скасувати</button>
+                <button type="button" class="service-confirm-modal-btn service-confirm-modal-btn-confirm" id="confirmModalConfirm">Підтвердити</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('.service-update-form');
+            const modal = document.getElementById('serviceConfirmModal');
+            const confirmBtn = document.getElementById('confirmModalConfirm');
+            const cancelBtn = document.getElementById('confirmModalCancel');
+            const serviceNameEl = document.getElementById('confirmServiceName');
+            const currentMileageEl = document.getElementById('confirmCurrentMileage');
+            const currentMileage = {{ current_mileage }};
+            
+            let currentForm = null;
+            let currentButton = null;
+            let originalButtonText = null;
+            
+            // Show modal function
+            function showModal(serviceName, form, button) {
+                currentForm = form;
+                currentButton = button;
+                originalButtonText = button.innerHTML;
+                serviceNameEl.textContent = serviceName;
+                currentMileageEl.textContent = currentMileage + ' км';
+                modal.classList.add('active');
+            }
+            
+            // Hide modal function
+            function hideModal() {
+                modal.classList.remove('active');
+                currentForm = null;
+                currentButton = null;
+                originalButtonText = null;
+            }
+            
+            // Cancel button handler
+            cancelBtn.addEventListener('click', function() {
+                hideModal();
+            });
+            
+            // Click outside modal to close
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideModal();
+                }
+            });
+            
+            // Confirm button handler
+            confirmBtn.addEventListener('click', function() {
+                if (!currentForm || !currentButton) return;
+                
+                // Disable button and show loading
+                currentButton.disabled = true;
+                confirmBtn.disabled = true;
+                currentButton.innerHTML = '<svg style="width: 0.875rem; height: 0.875rem;" class="animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Оновлення...';
+                currentButton.style.opacity = '0.6';
+                confirmBtn.textContent = 'Оновлення...';
+                
+                // Get CSRF token
+                const csrfToken = currentForm.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                // Send AJAX request
+                fetch(currentForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        csrfmiddlewaretoken: csrfToken
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        hideModal();
+                        // Reload page to show updated data
+                        window.location.reload();
+                    } else {
+                        alert('Помилка: ' + (data.message || 'Невідома помилка'));
+                        currentButton.disabled = false;
+                        confirmBtn.disabled = false;
+                        currentButton.innerHTML = originalButtonText;
+                        currentButton.style.opacity = '1';
+                        confirmBtn.textContent = 'Підтвердити';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Помилка при оновленні сервісу');
+                    currentButton.disabled = false;
+                    confirmBtn.disabled = false;
+                    currentButton.innerHTML = originalButtonText;
+                    currentButton.style.opacity = '1';
+                    confirmBtn.textContent = 'Підтвердити';
+                });
+            });
+            
+            // Form submit handlers
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const button = form.querySelector('.service-update-btn');
+                    const serviceKey = form.getAttribute('data-service-key');
+                    
+                    // Find service name from the form's parent card
+                    const card = form.closest('[style*="background"]');
+                    const serviceNameEl = card ? card.querySelector('h5') : null;
+                    const serviceName = serviceNameEl ? serviceNameEl.textContent.trim() : 'сервісу';
+                    
+                    showModal(serviceName, form, button);
+                });
+            });
+            
+            // Calculate and display progress bars
+            document.querySelectorAll('.service-progress').forEach(function(progressEl) {
+                const current = parseInt(progressEl.getAttribute('data-current'));
+                const last = parseInt(progressEl.getAttribute('data-last'));
+                const next = parseInt(progressEl.getAttribute('data-next'));
+                
+                const progressBar = progressEl.querySelector('.progress-bar');
+                const progressPercent = progressEl.querySelector('.progress-percent');
+                
+                if (current >= next) {
+                    // Overdue
+                    progressBar.style.width = '100%';
+                    progressBar.style.background = '#dc2626';
+                    progressPercent.textContent = 'Перевищено';
+                    progressPercent.style.color = '#dc2626';
+                } else {
+                    // Calculate progress percentage
+                    const totalDistance = next - last;
+                    const traveledDistance = current - last;
+                    const percent = Math.min(100, Math.max(0, (traveledDistance / totalDistance) * 100));
+                    
+                    progressBar.style.width = percent + '%';
+                    progressPercent.textContent = Math.round(percent) + '%';
+                    
+                    // Change color based on progress
+                    if (percent >= 100) {
+                        progressBar.style.background = '#dc2626';
+                        progressPercent.style.color = '#dc2626';
+                    } else if (percent >= 80) {
+                        progressBar.style.background = '#f59e0b';
+                        progressPercent.style.color = '#f59e0b';
+                    } else {
+                        progressBar.style.background = '#10b981';
+                        progressPercent.style.color = '#374151';
+                    }
+                }
+            });
+        });
+    </script>
 {% endblock %}
 

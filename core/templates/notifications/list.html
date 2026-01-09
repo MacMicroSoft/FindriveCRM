@@ -1,0 +1,202 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block title %}Сповіщення{% endblock %}
+
+{% block head %}
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h1 style="color: #111827; font-size: 1.5rem; font-weight: 600; margin: 0;">Сповіщення</h1>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <style>
+        .notifications-container {
+            max-width: 56rem;
+            margin: 0 auto;
+        }
+        
+        .notification-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .notification-card:hover {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border-color: #d1d5db;
+        }
+        
+        .notification-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .notification-icon.info {
+            background: #dbeafe;
+        }
+        
+        .notification-icon.success {
+            background: #d1fae5;
+        }
+        
+        .notification-icon.warning {
+            background: #fef3c7;
+        }
+        
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .notification-message {
+            color: #111827;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 0.25rem;
+        }
+        
+        .notification-date {
+            color: #6b7280;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .notification-car {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        
+        .notification-car-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: color 0.2s;
+        }
+        
+        .notification-car-link:hover {
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
+        
+        .notification-car-label {
+            color: #6b7280;
+        }
+        
+        .notification-overdue {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #fef2f2;
+            border-left: 3px solid #dc2626;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+        
+        .notification-overdue-service {
+            font-weight: 500;
+            color: #991b1b;
+            margin-bottom: 0.25rem;
+        }
+        
+        .notification-overdue-amount {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+        
+        .empty-state-icon {
+            width: 4rem;
+            height: 4rem;
+            margin: 0 auto 1rem;
+            color: #d1d5db;
+        }
+    </style>
+    
+    <div class="notifications-container">
+        {% if notifications %}
+            {% for notification in notifications %}
+                <div class="notification-card">
+                    <div class="notification-icon {{ notification.icon }}">
+                        {% if notification.icon == 'info' %}
+                            <svg style="width: 1.5rem; height: 1.5rem; color: #2563eb;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        {% elif notification.icon == 'success' %}
+                            <svg style="width: 1.5rem; height: 1.5rem; color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        {% elif notification.icon == 'warning' %}
+                            <svg style="width: 1.5rem; height: 1.5rem; color: #f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        {% endif %}
+                    </div>
+                    <div class="notification-content">
+                        <p class="notification-message">{{ notification.message }}</p>
+                        <div class="notification-date">
+                            <svg style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>{{ notification.date }} о {{ notification.time }}</span>
+                        </div>
+                        {% if notification.car_uuid and notification.car_license_plate %}
+                        <div class="notification-car">
+                            <span class="notification-car-label">Автомобіль:</span>
+                            <a href="{% url 'car-detail' pk=notification.car_uuid %}" class="notification-car-link">
+                                <svg style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ notification.car_license_plate }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if notification.overdue_service %}
+                        <div class="notification-overdue">
+                            <div class="notification-overdue-service">
+                                {{ notification.overdue_service.name }}
+                            </div>
+                            <div>
+                                Прострочено на <span class="notification-overdue-amount">{{ notification.overdue_service.overdue_km }} км</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                <p style="font-size: 1rem; font-weight: 500; color: #374151; margin-bottom: 0.5rem;">Немає сповіщень</p>
+                <p style="font-size: 0.875rem;">Поки що немає нових сповіщень</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
