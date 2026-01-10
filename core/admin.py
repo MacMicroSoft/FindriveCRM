@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Car, Owner, Outlay, OutlayAmount, Chat, Message
+from .models import User, Car, Owner, Outlay, OutlayAmount, Chat, Message, CarService, Service
 from django.contrib.auth.admin import UserAdmin
 
 
@@ -41,3 +41,13 @@ class ChatAdmin(admin.ModelAdmin):
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     list_display = ["uuid", "chat", "sender", "sended"]
+
+
+@admin.register(CarService)
+class CarServiceAdmin(admin.ModelAdmin):
+    list_display = ('car', 'name', 'count', 'price_per_one')
+
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'name', 'location', 'social_media')

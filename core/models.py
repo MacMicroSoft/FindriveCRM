@@ -214,8 +214,8 @@ class CarService(AbstractTimeStampModel):
     def total(self):
         return self.count * self.price_per_one
 
-    def __str__(self):
-        return f"{self.car} {self.name}"
+    # def __str__(self):
+    #     return f"{self.car} {self.name}"
 
 
 class Other(AbstractTimeStampModel):

@@ -673,8 +673,7 @@ class AnaliticsView(LoginRequiredMixin, View):
     template_name = ""
 
     def get(self, request):
-        test_car = Car.objects.all().last()
-        t = AnalysManager(test_car)
+        t = AnalysManager()
         t.test()
         return JsonResponse({"ok": "ok"})
 
